@@ -13,6 +13,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:quiver/core.dart';
 
 List<CameraDescription> get mockAvailableCameras => <CameraDescription>[
       const CameraDescription(
@@ -192,42 +193,6 @@ void main() {
           .called(1);
     });
 
-    test('setDescription waits for initialize before calling dispose',
-        () async {
-      final CameraController cameraController = CameraController(
-        const CameraDescription(
-          name: 'cam',
-          lensDirection: CameraLensDirection.back,
-          sensorOrientation: 90,
-        ),
-        ResolutionPreset.max,
-        imageFormatGroup: ImageFormatGroup.bgra8888,
-      );
-
-      final Completer<void> initializeCompleter = Completer<void>();
-      when(CameraPlatform.instance.initializeCamera(
-        mockInitializeCamera,
-        imageFormatGroup: ImageFormatGroup.bgra8888,
-      )).thenAnswer(
-        (_) => initializeCompleter.future,
-      );
-
-      unawaited(cameraController.initialize());
-
-      final Future<void> setDescriptionFuture = cameraController.setDescription(
-        const CameraDescription(
-            name: 'cam2',
-            lensDirection: CameraLensDirection.front,
-            sensorOrientation: 90),
-      );
-      verifyNever(CameraPlatform.instance.dispose(mockInitializeCamera));
-
-      initializeCompleter.complete();
-
-      await setDescriptionFuture;
-      verify(CameraPlatform.instance.dispose(mockInitializeCamera));
-    });
-
     test('prepareForVideoRecording() calls $CameraPlatform ', () async {
       final CameraController cameraController = CameraController(
           const CameraDescription(
@@ -368,6 +333,30 @@ void main() {
             (CameraException error) => error.description,
             'A video recording is already started.',
             'startVideoRecording was called when a recording is already started.',
+          )));
+    });
+
+    test(
+        'startVideoRecording() throws $CameraException when already streaming images',
+        () async {
+      final CameraController cameraController = CameraController(
+          const CameraDescription(
+              name: 'cam',
+              lensDirection: CameraLensDirection.back,
+              sensorOrientation: 90),
+          ResolutionPreset.max);
+
+      await cameraController.initialize();
+
+      cameraController.value =
+          cameraController.value.copyWith(isStreamingImages: true);
+
+      expect(
+          cameraController.startVideoRecording(),
+          throwsA(isA<CameraException>().having(
+            (CameraException error) => error.description,
+            'A camera has started streaming images.',
+            'startVideoRecording was called while a camera was streaming images.',
           )));
     });
 
@@ -708,6 +697,7 @@ void main() {
         PlatformException(
           code: 'TEST_ERROR',
           message: 'This is a test error message',
+          details: null,
         ),
       );
 
@@ -752,6 +742,7 @@ void main() {
         PlatformException(
           code: 'TEST_ERROR',
           message: 'This is a test error message',
+          details: null,
         ),
       );
 
@@ -796,6 +787,7 @@ void main() {
         PlatformException(
           code: 'TEST_ERROR',
           message: 'This is a test error message',
+          details: null,
         ),
       );
 
@@ -1227,6 +1219,7 @@ void main() {
         PlatformException(
           code: 'TEST_ERROR',
           message: 'This is a test error message',
+          details: null,
         ),
       );
 
@@ -1292,6 +1285,7 @@ void main() {
         PlatformException(
           code: 'TEST_ERROR',
           message: 'This is a test error message',
+          details: null,
         ),
       );
 
@@ -1345,6 +1339,7 @@ void main() {
         PlatformException(
           code: 'TEST_ERROR',
           message: 'This is a test error message',
+          details: null,
         ),
       );
 
@@ -1390,6 +1385,7 @@ void main() {
         PlatformException(
           code: 'TEST_ERROR',
           message: 'This is a test error message',
+          details: null,
         ),
       );
 
@@ -1469,12 +1465,6 @@ class MockCameraPlatform extends Mock
   Future<XFile> startVideoRecording(int cameraId,
           {Duration? maxVideoDuration}) =>
       Future<XFile>.value(mockVideoRecordingXFile);
-
-  @override
-  Future<void> startVideoCapturing(VideoCaptureOptions options) {
-    return startVideoRecording(options.cameraId,
-        maxVideoDuration: options.maxDuration);
-  }
 
   @override
   Future<void> lockCaptureOrientation(

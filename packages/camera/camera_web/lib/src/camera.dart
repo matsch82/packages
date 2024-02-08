@@ -5,13 +5,13 @@
 import 'dart:async';
 import 'dart:html' as html;
 import 'dart:ui';
-import 'dart:ui_web' as ui_web;
 
 import 'package:camera_platform_interface/camera_platform_interface.dart';
+import 'package:camera_web/src/camera_service.dart';
+import 'package:camera_web/src/types/types.dart';
 import 'package:flutter/foundation.dart';
 
-import 'camera_service.dart';
-import 'types/types.dart';
+import 'shims/dart_ui.dart' as ui;
 
 String _getViewType(int cameraId) => 'plugins.flutter.io/camera_$cameraId';
 
@@ -168,7 +168,7 @@ class Camera {
       ..style.setProperty('object-fit', 'cover')
       ..append(videoElement);
 
-    ui_web.platformViewRegistry.registerViewFactory(
+    ui.platformViewRegistry.registerViewFactory(
       _getViewType(textureId),
       (_) => divElement,
     );
@@ -471,7 +471,9 @@ class Camera {
     _onVideoRecordingErrorSubscription =
         mediaRecorder!.onError.listen((html.Event event) {
       final html.ErrorEvent error = event as html.ErrorEvent;
-      videoRecordingErrorController.add(error);
+      if (error != null) {
+        videoRecordingErrorController.add(error);
+      }
     });
 
     if (maxVideoDuration != null) {

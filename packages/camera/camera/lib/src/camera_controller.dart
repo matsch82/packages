@@ -3,15 +3,14 @@
 // found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:collection';
 import 'dart:math';
 
+import 'package:camera/camera.dart';
 import 'package:camera_platform_interface/camera_platform_interface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import '../camera.dart';
+import 'package:quiver/core.dart';
 
 /// Signature for a callback receiving the a camera image.
 ///
@@ -49,7 +48,6 @@ class CameraValue {
     required this.exposurePointSupported,
     required this.focusPointSupported,
     required this.deviceOrientation,
-    required this.description,
     this.lockedCaptureOrientation,
     this.recordingOrientation,
     this.isPreviewPaused = false,
@@ -57,7 +55,7 @@ class CameraValue {
   }) : _isRecordingPaused = isRecordingPaused;
 
   /// Creates a new camera controller state for an uninitialized controller.
-  const CameraValue.uninitialized(CameraDescription description)
+  const CameraValue.uninitialized()
       : this(
           isInitialized: false,
           isRecordingVideo: false,
@@ -71,7 +69,6 @@ class CameraValue {
           focusPointSupported: false,
           deviceOrientation: DeviceOrientation.portraitUp,
           isPreviewPaused: false,
-          description: description,
         );
 
   /// True after [CameraController.initialize] has completed successfully.
@@ -145,9 +142,6 @@ class CameraValue {
   /// The orientation of the currently running video recording.
   final DeviceOrientation? recordingOrientation;
 
-  /// The properties of the camera device controlled by this controller.
-  final CameraDescription description;
-
   /// Creates a modified copy of the object.
   ///
   /// Explicitly specified fields get the specified value, all other fields get
@@ -169,7 +163,6 @@ class CameraValue {
     Optional<DeviceOrientation>? lockedCaptureOrientation,
     Optional<DeviceOrientation>? recordingOrientation,
     bool? isPreviewPaused,
-    CameraDescription? description,
     Optional<DeviceOrientation>? previewPauseOrientation,
   }) {
     return CameraValue(
@@ -194,7 +187,6 @@ class CameraValue {
           ? this.recordingOrientation
           : recordingOrientation.orNull,
       isPreviewPaused: isPreviewPaused ?? this.isPreviewPaused,
-      description: description ?? this.description,
       previewPauseOrientation: previewPauseOrientation == null
           ? this.previewPauseOrientation
           : previewPauseOrientation.orNull,
@@ -218,8 +210,7 @@ class CameraValue {
         'lockedCaptureOrientation: $lockedCaptureOrientation, '
         'recordingOrientation: $recordingOrientation, '
         'isPreviewPaused: $isPreviewPaused, '
-        'previewPausedOrientation: $previewPauseOrientation, '
-        'description: $description)';
+        'previewPausedOrientation: $previewPauseOrientation)';
   }
 }
 
@@ -233,14 +224,14 @@ class CameraValue {
 class CameraController extends ValueNotifier<CameraValue> {
   /// Creates a new camera controller in an uninitialized state.
   CameraController(
-    CameraDescription description,
+    this.description,
     this.resolutionPreset, {
     this.enableAudio = true,
     this.imageFormatGroup,
-  }) : super(CameraValue.uninitialized(description));
+  }) : super(const CameraValue.uninitialized());
 
   /// The properties of the camera device controlled by this controller.
-  CameraDescription get description => value.description;
+  final CameraDescription description;
 
   /// The resolution this controller is targeting.
   ///
@@ -265,10 +256,7 @@ class CameraController extends ValueNotifier<CameraValue> {
 
   bool _isDisposed = false;
   StreamSubscription<CameraImageData>? _imageStreamSubscription;
-  // A Future awaiting an attempt to initialize (e.g. after `initialize` was
-  // just called). If the controller has not been initialized at least once,
-  // this value is null.
-  Future<void>? _initializeFuture;
+  FutureOr<bool>? _initCalled;
   StreamSubscription<DeviceOrientationChangedEvent>?
       _deviceOrientationSubscription;
 
@@ -285,27 +273,18 @@ class CameraController extends ValueNotifier<CameraValue> {
   /// Initializes the camera on the device.
   ///
   /// Throws a [CameraException] if the initialization fails.
-  Future<void> initialize() => _initializeWithDescription(description);
-
-  /// Initializes the camera on the device with the specified description.
-  ///
-  /// Throws a [CameraException] if the initialization fails.
-  Future<void> _initializeWithDescription(CameraDescription description) async {
+  Future<void> initialize() async {
     if (_isDisposed) {
       throw CameraException(
         'Disposed CameraController',
         'initialize was called on a disposed CameraController',
       );
     }
-
-    final Completer<void> initializeCompleter = Completer<void>();
-    _initializeFuture = initializeCompleter.future;
-
     try {
-      final Completer<CameraInitializedEvent> initializeCompleter =
+      final Completer<CameraInitializedEvent> _initializeCompleter =
           Completer<CameraInitializedEvent>();
 
-      _deviceOrientationSubscription ??= CameraPlatform.instance
+      _deviceOrientationSubscription = CameraPlatform.instance
           .onDeviceOrientationChanged()
           .listen((DeviceOrientationChangedEvent event) {
         value = value.copyWith(
@@ -323,7 +302,7 @@ class CameraController extends ValueNotifier<CameraValue> {
           .onCameraInitialized(_cameraId)
           .first
           .then((CameraInitializedEvent event) {
-        initializeCompleter.complete(event);
+        _initializeCompleter.complete(event);
       }));
 
       await CameraPlatform.instance.initializeCamera(
@@ -333,26 +312,25 @@ class CameraController extends ValueNotifier<CameraValue> {
 
       value = value.copyWith(
         isInitialized: true,
-        description: description,
-        previewSize: await initializeCompleter.future
+        previewSize: await _initializeCompleter.future
             .then((CameraInitializedEvent event) => Size(
                   event.previewWidth,
                   event.previewHeight,
                 )),
-        exposureMode: await initializeCompleter.future
+        exposureMode: await _initializeCompleter.future
             .then((CameraInitializedEvent event) => event.exposureMode),
-        focusMode: await initializeCompleter.future
+        focusMode: await _initializeCompleter.future
             .then((CameraInitializedEvent event) => event.focusMode),
-        exposurePointSupported: await initializeCompleter.future.then(
+        exposurePointSupported: await _initializeCompleter.future.then(
             (CameraInitializedEvent event) => event.exposurePointSupported),
-        focusPointSupported: await initializeCompleter.future
+        focusPointSupported: await _initializeCompleter.future
             .then((CameraInitializedEvent event) => event.focusPointSupported),
       );
     } on PlatformException catch (e) {
       throw CameraException(e.code, e.message);
-    } finally {
-      initializeCompleter.complete();
     }
+
+    _initCalled = true;
   }
 
   /// Prepare the capture session for video recording.
@@ -398,23 +376,6 @@ class CameraController extends ValueNotifier<CameraValue> {
           previewPauseOrientation: const Optional<DeviceOrientation>.absent());
     } on PlatformException catch (e) {
       throw CameraException(e.code, e.message);
-    }
-  }
-
-  /// Sets the description of the camera.
-  ///
-  /// Throws a [CameraException] if setting the description fails.
-  Future<void> setDescription(CameraDescription description) async {
-    if (value.isRecordingVideo) {
-      await CameraPlatform.instance.setDescriptionWhileRecording(description);
-      value = value.copyWith(description: description);
-    } else {
-      if (_initializeFuture != null) {
-        await _initializeFuture;
-        await CameraPlatform.instance.dispose(_cameraId);
-      }
-
-      await _initializeWithDescription(description);
     }
   }
 
@@ -497,6 +458,12 @@ class CameraController extends ValueNotifier<CameraValue> {
     assert(defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS);
     _throwIfNotInitialized('stopImageStream');
+    if (value.isRecordingVideo) {
+      throw CameraException(
+        'A video recording is already started.',
+        'stopImageStream was called while a video is being recorded.',
+      );
+    }
     if (!value.isStreamingImages) {
       throw CameraException(
         'No camera is streaming images',
@@ -515,13 +482,9 @@ class CameraController extends ValueNotifier<CameraValue> {
 
   /// Start a video recording.
   ///
-  /// You may optionally pass an [onAvailable] callback to also have the
-  /// video frames streamed to this callback.
-  ///
   /// The video is returned as a [XFile] after calling [stopVideoRecording].
   /// Throws a [CameraException] if the capture fails.
-  Future<void> startVideoRecording(
-      {onLatestImageAvailable? onAvailable}) async {
+  Future<void> startVideoRecording() async {
     _throwIfNotInitialized('startVideoRecording');
     if (value.isRecordingVideo) {
       throw CameraException(
@@ -529,23 +492,20 @@ class CameraController extends ValueNotifier<CameraValue> {
         'startVideoRecording was called when a recording is already started.',
       );
     }
-
-    Function(CameraImageData image)? streamCallback;
-    if (onAvailable != null) {
-      streamCallback = (CameraImageData imageData) {
-        onAvailable(CameraImage.fromPlatformInterface(imageData));
-      };
+    if (value.isStreamingImages) {
+      throw CameraException(
+        'A camera has started streaming images.',
+        'startVideoRecording was called while a camera was streaming images.',
+      );
     }
 
     try {
-      await CameraPlatform.instance.startVideoCapturing(
-          VideoCaptureOptions(_cameraId, streamCallback: streamCallback));
+      await CameraPlatform.instance.startVideoRecording(_cameraId);
       value = value.copyWith(
           isRecordingVideo: true,
           isRecordingPaused: false,
           recordingOrientation: Optional<DeviceOrientation>.of(
-              value.lockedCaptureOrientation ?? value.deviceOrientation),
-          isStreamingImages: onAvailable != null);
+              value.lockedCaptureOrientation ?? value.deviceOrientation));
     } on PlatformException catch (e) {
       throw CameraException(e.code, e.message);
     }
@@ -562,11 +522,6 @@ class CameraController extends ValueNotifier<CameraValue> {
         'stopVideoRecording was called when no video is recording.',
       );
     }
-
-    if (value.isStreamingImages) {
-      await stopImageStream();
-    }
-
     try {
       final XFile file =
           await CameraPlatform.instance.stopVideoRecording(_cameraId);
@@ -853,8 +808,8 @@ class CameraController extends ValueNotifier<CameraValue> {
     _unawaited(_deviceOrientationSubscription?.cancel());
     _isDisposed = true;
     super.dispose();
-    if (_initializeFuture != null) {
-      await _initializeFuture;
+    if (_initCalled != null) {
+      await _initCalled;
       await CameraPlatform.instance.dispose(_cameraId);
     }
   }
@@ -882,114 +837,5 @@ class CameraController extends ValueNotifier<CameraValue> {
     if (!_isDisposed) {
       super.removeListener(listener);
     }
-  }
-}
-
-/// A value that might be absent.
-///
-/// Used to represent [DeviceOrientation]s that are optional but also able
-/// to be cleared.
-@immutable
-class Optional<T> extends IterableBase<T> {
-  /// Constructs an empty Optional.
-  const Optional.absent() : _value = null;
-
-  /// Constructs an Optional of the given [value].
-  ///
-  /// Throws [ArgumentError] if [value] is null.
-  Optional.of(T value) : _value = value {
-    // TODO(cbracken): Delete and make this ctor const once mixed-mode
-    // execution is no longer around.
-    ArgumentError.checkNotNull(value);
-  }
-
-  /// Constructs an Optional of the given [value].
-  ///
-  /// If [value] is null, returns [absent()].
-  const Optional.fromNullable(T? value) : _value = value;
-
-  final T? _value;
-
-  /// True when this optional contains a value.
-  bool get isPresent => _value != null;
-
-  /// True when this optional contains no value.
-  bool get isNotPresent => _value == null;
-
-  /// Gets the Optional value.
-  ///
-  /// Throws [StateError] if [value] is null.
-  T get value {
-    if (_value == null) {
-      throw StateError('value called on absent Optional.');
-    }
-    return _value!;
-  }
-
-  /// Executes a function if the Optional value is present.
-  void ifPresent(void Function(T value) ifPresent) {
-    if (isPresent) {
-      ifPresent(_value as T);
-    }
-  }
-
-  /// Execution a function if the Optional value is absent.
-  void ifAbsent(void Function() ifAbsent) {
-    if (!isPresent) {
-      ifAbsent();
-    }
-  }
-
-  /// Gets the Optional value with a default.
-  ///
-  /// The default is returned if the Optional is [absent()].
-  ///
-  /// Throws [ArgumentError] if [defaultValue] is null.
-  T or(T defaultValue) {
-    return _value ?? defaultValue;
-  }
-
-  /// Gets the Optional value, or `null` if there is none.
-  T? get orNull => _value;
-
-  /// Transforms the Optional value.
-  ///
-  /// If the Optional is [absent()], returns [absent()] without applying the transformer.
-  ///
-  /// The transformer must not return `null`. If it does, an [ArgumentError] is thrown.
-  Optional<S> transform<S>(S Function(T value) transformer) {
-    return _value == null
-        ? Optional<S>.absent()
-        : Optional<S>.of(transformer(_value as T));
-  }
-
-  /// Transforms the Optional value.
-  ///
-  /// If the Optional is [absent()], returns [absent()] without applying the transformer.
-  ///
-  /// Returns [absent()] if the transformer returns `null`.
-  Optional<S> transformNullable<S>(S? Function(T value) transformer) {
-    return _value == null
-        ? Optional<S>.absent()
-        : Optional<S>.fromNullable(transformer(_value as T));
-  }
-
-  @override
-  Iterator<T> get iterator =>
-      isPresent ? <T>[_value as T].iterator : Iterable<T>.empty().iterator;
-
-  /// Delegates to the underlying [value] hashCode.
-  @override
-  int get hashCode => _value.hashCode;
-
-  /// Delegates to the underlying [value] operator==.
-  @override
-  bool operator ==(Object o) => o is Optional<T> && o._value == _value;
-
-  @override
-  String toString() {
-    return _value == null
-        ? 'Optional { absent }'
-        : 'Optional { value: $_value }';
   }
 }

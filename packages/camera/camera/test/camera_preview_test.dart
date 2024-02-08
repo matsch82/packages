@@ -8,13 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quiver/core.dart';
 
 class FakeController extends ValueNotifier<CameraValue>
     implements CameraController {
-  FakeController() : super(const CameraValue.uninitialized(fakeDescription));
-
-  static const CameraDescription fakeDescription = CameraDescription(
-      name: '', lensDirection: CameraLensDirection.back, sensorOrientation: 0);
+  FakeController() : super(const CameraValue.uninitialized());
 
   @override
   Future<void> dispose() async {
@@ -31,6 +29,10 @@ class FakeController extends ValueNotifier<CameraValue>
 
   @override
   void debugCheckIsDisposed() {}
+
+  @override
+  CameraDescription get description => const CameraDescription(
+      name: '', lensDirection: CameraLensDirection.back, sensorOrientation: 0);
 
   @override
   bool get enableAudio => false;
@@ -96,8 +98,7 @@ class FakeController extends ValueNotifier<CameraValue>
   Future<void> startImageStream(onLatestImageAvailable onAvailable) async {}
 
   @override
-  Future<void> startVideoRecording(
-      {onLatestImageAvailable? onAvailable}) async {}
+  Future<void> startVideoRecording() async {}
 
   @override
   Future<void> stopImageStream() async {}
@@ -116,12 +117,6 @@ class FakeController extends ValueNotifier<CameraValue>
 
   @override
   Future<void> resumePreview() async {}
-
-  @override
-  Future<void> setDescription(CameraDescription description) async {}
-
-  @override
-  CameraDescription get description => value.description;
 }
 
 void main() {
@@ -206,6 +201,7 @@ void main() {
       controller.value = controller.value.copyWith(
         isInitialized: true,
         deviceOrientation: DeviceOrientation.portraitUp,
+        lockedCaptureOrientation: null,
         recordingOrientation: const Optional<DeviceOrientation>.fromNullable(
             DeviceOrientation.landscapeLeft),
         previewSize: const Size(480, 640),

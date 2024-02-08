@@ -18,7 +18,7 @@ Future<void> main() async {
 /// CameraApp is the Main Application.
 class CameraApp extends StatefulWidget {
   /// Default Constructor
-  const CameraApp({super.key});
+  const CameraApp({Key? key}) : super(key: key);
 
   @override
   State<CameraApp> createState() => _CameraAppState();
@@ -40,10 +40,10 @@ class _CameraAppState extends State<CameraApp> {
       if (e is CameraException) {
         switch (e.code) {
           case 'CameraAccessDenied':
-            // Handle access errors here.
+            print('User denied camera access.');
             break;
           default:
-            // Handle other errors here.
+            print('Handle other errors.');
             break;
         }
       }

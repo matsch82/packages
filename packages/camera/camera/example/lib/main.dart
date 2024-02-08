@@ -14,7 +14,7 @@ import 'package:video_player/video_player.dart';
 /// Camera example home widget.
 class CameraExampleHome extends StatefulWidget {
   /// Default Constructor
-  const CameraExampleHome({super.key});
+  const CameraExampleHome({Key? key}) : super(key: key);
 
   @override
   State<CameraExampleHome> createState() {
@@ -31,16 +31,17 @@ IconData getCameraLensIcon(CameraLensDirection direction) {
       return Icons.camera_front;
     case CameraLensDirection.external:
       return Icons.camera;
+    default:
+      throw ArgumentError('Unknown lens direction');
   }
-  // This enum is from a different package, so a new value could be added at
-  // any time. The example should keep working if that happens.
-  // ignore: dead_code
-  return Icons.camera;
 }
 
 void _logError(String code, String? message) {
-  // ignore: avoid_print
-  print('Error: $code${message == null ? '' : '\nError Message: $message'}');
+  if (message != null) {
+    print('Error: $code\nError Message: $message');
+  } else {
+    print('Error: $code');
+  }
 }
 
 class _CameraExampleHomeState extends State<CameraExampleHome>
@@ -71,7 +72,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+    _ambiguate(WidgetsBinding.instance)?.addObserver(this);
 
     _flashModeControlRowAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -101,7 +102,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    _ambiguate(WidgetsBinding.instance)?.removeObserver(this);
     _flashModeControlRowAnimationController.dispose();
     _exposureModeControlRowAnimationController.dispose();
     super.dispose();
@@ -120,7 +121,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     if (state == AppLifecycleState.inactive) {
       cameraController.dispose();
     } else if (state == AppLifecycleState.resumed) {
-      _initializeCameraController(cameraController.description);
+      onNewCameraSelected(cameraController.description);
     }
   }
   // #enddocregion AppLifecycle
@@ -158,6 +159,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
           Padding(
             padding: const EdgeInsets.all(5.0),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                 _cameraTogglesRowWidget(),
                 _thumbnailWidget(),
@@ -250,7 +252,9 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
                         child: Center(
                           child: AspectRatio(
                               aspectRatio:
-                                  localVideoController.value.aspectRatio,
+                                  localVideoController.value.size != null
+                                      ? localVideoController.value.aspectRatio
+                                      : 1.0,
                               child: VideoPlayer(localVideoController)),
                         ),
                       ),
@@ -267,6 +271,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
       children: <Widget>[
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisSize: MainAxisSize.max,
           children: <Widget>[
             IconButton(
               icon: const Icon(Icons.flash_on),
@@ -320,6 +325,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
       child: ClipRect(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisSize: MainAxisSize.max,
           children: <Widget>[
             IconButton(
               icon: const Icon(Icons.flash_off),
@@ -365,12 +371,12 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
   Widget _exposureModeControlRowWidget() {
     final ButtonStyle styleAuto = TextButton.styleFrom(
-      foregroundColor: controller?.value.exposureMode == ExposureMode.auto
+      primary: controller?.value.exposureMode == ExposureMode.auto
           ? Colors.orange
           : Colors.blue,
     );
     final ButtonStyle styleLocked = TextButton.styleFrom(
-      foregroundColor: controller?.value.exposureMode == ExposureMode.locked
+      primary: controller?.value.exposureMode == ExposureMode.locked
           ? Colors.orange
           : Colors.blue,
     );
@@ -387,6 +393,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisSize: MainAxisSize.max,
                 children: <Widget>[
                   TextButton(
                     style: styleAuto,
@@ -424,6 +431,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisSize: MainAxisSize.max,
                 children: <Widget>[
                   Text(_minAvailableExposureOffset.toString()),
                   Slider(
@@ -448,12 +456,12 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
   Widget _focusModeControlRowWidget() {
     final ButtonStyle styleAuto = TextButton.styleFrom(
-      foregroundColor: controller?.value.focusMode == FocusMode.auto
+      primary: controller?.value.focusMode == FocusMode.auto
           ? Colors.orange
           : Colors.blue,
     );
     final ButtonStyle styleLocked = TextButton.styleFrom(
-      foregroundColor: controller?.value.focusMode == FocusMode.locked
+      primary: controller?.value.focusMode == FocusMode.locked
           ? Colors.orange
           : Colors.blue,
     );
@@ -470,6 +478,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisSize: MainAxisSize.max,
                 children: <Widget>[
                   TextButton(
                     style: styleAuto,
@@ -506,6 +515,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      mainAxisSize: MainAxisSize.max,
       children: <Widget>[
         IconButton(
           icon: const Icon(Icons.camera_alt),
@@ -574,7 +584,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
 
     if (_cameras.isEmpty) {
-      SchedulerBinding.instance.addPostFrameCallback((_) async {
+      _ambiguate(SchedulerBinding.instance)?.addPostFrameCallback((_) async {
         showInSnackBar('No camera found.');
       });
       return const Text('None');
@@ -587,7 +597,10 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
               title: Icon(getCameraLensIcon(cameraDescription.lensDirection)),
               groupValue: controller?.description,
               value: cameraDescription,
-              onChanged: onChanged,
+              onChanged:
+                  controller != null && controller!.value.isRecordingVideo
+                      ? null
+                      : onChanged,
             ),
           ),
         );
@@ -620,15 +633,17 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
   }
 
   Future<void> onNewCameraSelected(CameraDescription cameraDescription) async {
-    if (controller != null) {
-      return controller!.setDescription(cameraDescription);
-    } else {
-      return _initializeCameraController(cameraDescription);
+    final CameraController? oldController = controller;
+    if (oldController != null) {
+      // `controller` needs to be set to null before getting disposed,
+      // to avoid a race condition when we use the controller that is being
+      // disposed. This happens when camera permission dialog shows up,
+      // which triggers `didChangeAppLifecycleState`, which disposes and
+      // re-creates the controller.
+      controller = null;
+      await oldController.dispose();
     }
-  }
 
-  Future<void> _initializeCameraController(
-      CameraDescription cameraDescription) async {
     final CameraController cameraController = CameraController(
       cameraDescription,
       kIsWeb ? ResolutionPreset.max : ResolutionPreset.medium,
@@ -692,6 +707,10 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
         case 'AudioAccessRestricted':
           // iOS only
           showInSnackBar('Audio access is restricted.');
+          break;
+        case 'cameraPermission':
+          // Android & web only
+          showInSnackBar('Unknown permission error.');
           break;
         default:
           _showCameraException(e);
@@ -986,15 +1005,11 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     }
 
     final VideoPlayerController vController = kIsWeb
-        // TODO(gabrielokura): remove the ignore once the following line can migrate to
-        // use VideoPlayerController.networkUrl after the issue is resolved.
-        // https://github.com/flutter/flutter/issues/121927
-        // ignore: deprecated_member_use
         ? VideoPlayerController.network(videoFile!.path)
         : VideoPlayerController.file(File(videoFile!.path));
 
     videoPlayerListener = () {
-      if (videoController != null) {
+      if (videoController != null && videoController!.value.size != null) {
         // Refreshing the state to update video player with the correct ratio.
         if (mounted) {
           setState(() {});
@@ -1045,7 +1060,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 /// CameraApp is the Main Application.
 class CameraApp extends StatelessWidget {
   /// Default Constructor
-  const CameraApp({super.key});
+  const CameraApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -1067,3 +1082,10 @@ Future<void> main() async {
   }
   runApp(const CameraApp());
 }
+
+/// This allows a value of type T or T? to be treated as a value of type T?.
+///
+/// We use this so that APIs that have become non-nullable can still be used
+/// with `!` and `?` on the stable branch.
+// TODO(ianh): Remove this once we roll stable in late 2021.
+T? _ambiguate<T>(T? value) => value;

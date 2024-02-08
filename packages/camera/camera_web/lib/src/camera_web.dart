@@ -7,14 +7,13 @@ import 'dart:html' as html;
 import 'dart:math';
 
 import 'package:camera_platform_interface/camera_platform_interface.dart';
+import 'package:camera_web/src/camera.dart';
+import 'package:camera_web/src/camera_service.dart';
+import 'package:camera_web/src/types/types.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:stream_transform/stream_transform.dart';
-
-import 'camera.dart';
-import 'camera_service.dart';
-import 'types/types.dart';
 
 // The default error message, when the error is an empty string.
 // See: https://developer.mozilla.org/en-US/docs/Web/API/MediaError/message
@@ -96,11 +95,15 @@ class CameraPlugin extends CameraPlatform {
         );
       }
 
-      // Request video permissions only.
+      // Request video and audio permissions.
       final html.MediaStream cameraStream =
-          await _cameraService.getMediaStreamForOptions(const CameraOptions());
+          await _cameraService.getMediaStreamForOptions(
+        const CameraOptions(
+          audio: AudioConstraints(enabled: true),
+        ),
+      );
 
-      // Release the camera stream used to request video permissions.
+      // Release the camera stream used to request video and audio permissions.
       cameraStream
           .getVideoTracks()
           .forEach((html.MediaStreamTrack videoTrack) => videoTrack.stop());
@@ -447,33 +450,23 @@ class CameraPlugin extends CameraPlatform {
 
   @override
   Future<void> startVideoRecording(int cameraId, {Duration? maxVideoDuration}) {
-    return startVideoCapturing(
-        VideoCaptureOptions(cameraId, maxDuration: maxVideoDuration));
-  }
-
-  @override
-  Future<void> startVideoCapturing(VideoCaptureOptions options) {
-    if (options.streamCallback != null || options.streamOptions != null) {
-      throw UnimplementedError('Streaming is not currently supported on web');
-    }
-
     try {
-      final Camera camera = getCamera(options.cameraId);
+      final Camera camera = getCamera(cameraId);
 
       // Add camera's video recording errors to the camera events stream.
       // The error event fires when the video recording is not allowed or an unsupported
       // codec is used.
-      _cameraVideoRecordingErrorSubscriptions[options.cameraId] =
+      _cameraVideoRecordingErrorSubscriptions[cameraId] =
           camera.onVideoRecordingError.listen((html.ErrorEvent errorEvent) {
         cameraEventStreamController.add(
           CameraErrorEvent(
-            options.cameraId,
+            cameraId,
             'Error code: ${errorEvent.type}, error message: ${errorEvent.message}.',
           ),
         );
       });
 
-      return camera.startVideoRecording(maxVideoDuration: options.maxDuration);
+      return camera.startVideoRecording(maxVideoDuration: maxVideoDuration);
     } on html.DomException catch (e) {
       throw PlatformException(code: e.name, message: e.message);
     } on CameraWebException catch (e) {

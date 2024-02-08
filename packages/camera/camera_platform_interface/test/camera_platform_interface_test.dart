@@ -18,14 +18,7 @@ void main() {
     test('Cannot be implemented with `implements`', () {
       expect(() {
         CameraPlatform.instance = ImplementsCameraPlatform();
-        // In versions of `package:plugin_platform_interface` prior to fixing
-        // https://github.com/flutter/flutter/issues/109339, an attempt to
-        // implement a platform interface using `implements` would sometimes
-        // throw a `NoSuchMethodError` and other times throw an
-        // `AssertionError`.  After the issue is fixed, an `AssertionError` will
-        // always be thrown.  For the purpose of this test, we don't really care
-        // what exception is thrown, so just allow any exception.
-      }, throwsA(anything));
+      }, throwsNoSuchMethodError);
     });
 
     test('Can be extended', () {
@@ -163,65 +156,10 @@ void main() {
             lensDirection: CameraLensDirection.back,
             sensorOrientation: 0,
           ),
-          ResolutionPreset.low,
+          ResolutionPreset.high,
         ),
         throwsUnimplementedError,
       );
-    });
-
-    test(
-        'Default implementation of createCameraWithSettings() should call createCamera() passing parameters',
-        () {
-      // Arrange
-      const CameraDescription cameraDescription = CameraDescription(
-        name: 'back',
-        lensDirection: CameraLensDirection.back,
-        sensorOrientation: 0,
-      );
-
-      const MediaSettings mediaSettings = MediaSettings(
-        resolutionPreset: ResolutionPreset.low,
-        fps: 15,
-        videoBitrate: 200000,
-        audioBitrate: 32000,
-        enableAudio: true,
-      );
-
-      bool createCameraCalled = false;
-
-      final OverriddenCameraPlatform cameraPlatform = OverriddenCameraPlatform((
-        CameraDescription cameraDescriptionArg,
-        ResolutionPreset? resolutionPresetArg,
-        bool enableAudioArg,
-      ) {
-        expect(
-          cameraDescriptionArg,
-          cameraDescription,
-          reason: 'should pass camera description',
-        );
-        expect(
-          resolutionPresetArg,
-          mediaSettings.resolutionPreset,
-          reason: 'should pass resolution preset',
-        );
-        expect(
-          enableAudioArg,
-          mediaSettings.enableAudio,
-          reason: 'should pass enableAudio',
-        );
-
-        createCameraCalled = true;
-      });
-
-      // Act & Assert
-      cameraPlatform.createCameraWithSettings(
-        cameraDescription,
-        mediaSettings,
-      );
-
-      expect(createCameraCalled, isTrue,
-          reason:
-              'default implementation of createCameraWithSettings should call createCamera passing parameters');
     });
 
     test(
@@ -497,52 +435,6 @@ void main() {
       );
     });
   });
-
-  group('exports', () {
-    test('CameraDescription is exported', () {
-      const CameraDescription(
-          name: 'abc-123',
-          sensorOrientation: 1,
-          lensDirection: CameraLensDirection.external);
-    });
-
-    test('CameraException is exported', () {
-      CameraException('1', 'error');
-    });
-
-    test('CameraImageData is exported', () {
-      const CameraImageData(
-        width: 1,
-        height: 1,
-        format: CameraImageFormat(ImageFormatGroup.bgra8888, raw: 1),
-        planes: <CameraImagePlane>[],
-      );
-    });
-
-    test('ExposureMode is exported', () {
-      // ignore: unnecessary_statements
-      ExposureMode.auto;
-    });
-
-    test('FlashMode is exported', () {
-      // ignore: unnecessary_statements
-      FlashMode.auto;
-    });
-
-    test('FocusMode is exported', () {
-      // ignore: unnecessary_statements
-      FocusMode.auto;
-    });
-
-    test('ResolutionPreset is exported', () {
-      // ignore: unnecessary_statements
-      ResolutionPreset.high;
-    });
-
-    test('VideoCaptureOptions is exported', () {
-      const VideoCaptureOptions(123);
-    });
-  });
 }
 
 class ImplementsCameraPlatform implements CameraPlatform {
@@ -551,21 +443,3 @@ class ImplementsCameraPlatform implements CameraPlatform {
 }
 
 class ExtendsCameraPlatform extends CameraPlatform {}
-
-class OverriddenCameraPlatform extends CameraPlatform {
-  OverriddenCameraPlatform(this._onCreateCameraCalled);
-
-  final void Function(
-    CameraDescription cameraDescription,
-    ResolutionPreset? resolutionPreset,
-    bool enableAudio,
-  ) _onCreateCameraCalled;
-
-  @override
-  Future<int> createCamera(
-      CameraDescription cameraDescription, ResolutionPreset? resolutionPreset,
-      {bool enableAudio = false}) {
-    _onCreateCameraCalled(cameraDescription, resolutionPreset, enableAudio);
-    return Future<int>.value(0);
-  }
-}

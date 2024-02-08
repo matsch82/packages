@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:typed_data';
+
 import 'package:camera_platform_interface/camera_platform_interface.dart';
 import 'package:flutter/foundation.dart';
 
@@ -86,9 +88,6 @@ ImageFormatGroup _asImageFormatGroup(dynamic rawFormat) {
       // android.graphics.ImageFormat.JPEG
       case 256:
         return ImageFormatGroup.jpeg;
-      // android.graphics.ImageFormat.NV21
-      case 17:
-        return ImageFormatGroup.nv21;
     }
   }
 

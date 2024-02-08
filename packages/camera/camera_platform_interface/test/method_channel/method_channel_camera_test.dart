@@ -33,17 +33,12 @@ void main() {
         final MethodChannelCamera camera = MethodChannelCamera();
 
         // Act
-        final int cameraId = await camera.createCameraWithSettings(
+        final int cameraId = await camera.createCamera(
           const CameraDescription(
               name: 'Test',
               lensDirection: CameraLensDirection.back,
               sensorOrientation: 0),
-          const MediaSettings(
-            resolutionPreset: ResolutionPreset.low,
-            fps: 15,
-            videoBitrate: 200000,
-            audioBitrate: 32000,
-          ),
+          ResolutionPreset.high,
         );
 
         // Assert
@@ -52,10 +47,7 @@ void main() {
             'create',
             arguments: <String, Object?>{
               'cameraName': 'Test',
-              'resolutionPreset': 'low',
-              'fps': 15,
-              'videoBitrate': 200000,
-              'audioBitrate': 32000,
+              'resolutionPreset': 'high',
               'enableAudio': false
             },
           ),
@@ -79,19 +71,13 @@ void main() {
 
         // Act
         expect(
-          () => camera.createCameraWithSettings(
+          () => camera.createCamera(
             const CameraDescription(
               name: 'Test',
               lensDirection: CameraLensDirection.back,
               sensorOrientation: 0,
             ),
-            const MediaSettings(
-              resolutionPreset: ResolutionPreset.low,
-              fps: 15,
-              videoBitrate: 200000,
-              audioBitrate: 32000,
-              enableAudio: true,
-            ),
+            ResolutionPreset.high,
           ),
           throwsA(
             isA<CameraException>()
@@ -119,19 +105,13 @@ void main() {
 
         // Act
         expect(
-          () => camera.createCameraWithSettings(
+          () => camera.createCamera(
             const CameraDescription(
               name: 'Test',
               lensDirection: CameraLensDirection.back,
               sensorOrientation: 0,
             ),
-            const MediaSettings(
-              resolutionPreset: ResolutionPreset.low,
-              fps: 15,
-              videoBitrate: 200000,
-              audioBitrate: 32000,
-              enableAudio: true,
-            ),
+            ResolutionPreset.high,
           ),
           throwsA(
             isA<CameraException>()
@@ -187,19 +167,13 @@ void main() {
               'initialize': null
             });
         final MethodChannelCamera camera = MethodChannelCamera();
-        final int cameraId = await camera.createCameraWithSettings(
+        final int cameraId = await camera.createCamera(
           const CameraDescription(
             name: 'Test',
             lensDirection: CameraLensDirection.back,
             sensorOrientation: 0,
           ),
-          const MediaSettings(
-            resolutionPreset: ResolutionPreset.low,
-            fps: 15,
-            videoBitrate: 200000,
-            audioBitrate: 32000,
-            enableAudio: true,
-          ),
+          ResolutionPreset.high,
         );
 
         // Act
@@ -240,19 +214,13 @@ void main() {
             });
 
         final MethodChannelCamera camera = MethodChannelCamera();
-        final int cameraId = await camera.createCameraWithSettings(
+        final int cameraId = await camera.createCamera(
           const CameraDescription(
             name: 'Test',
             lensDirection: CameraLensDirection.back,
             sensorOrientation: 0,
           ),
-          const MediaSettings(
-            resolutionPreset: ResolutionPreset.low,
-            fps: 15,
-            videoBitrate: 200000,
-            audioBitrate: 32000,
-            enableAudio: true,
-          ),
+          ResolutionPreset.high,
         );
         final Future<void> initializeFuture = camera.initializeCamera(cameraId);
         camera.cameraEventStreamController.add(CameraInitializedEvent(
@@ -294,19 +262,13 @@ void main() {
           },
         );
         camera = MethodChannelCamera();
-        cameraId = await camera.createCameraWithSettings(
+        cameraId = await camera.createCamera(
           const CameraDescription(
             name: 'Test',
             lensDirection: CameraLensDirection.back,
             sensorOrientation: 0,
           ),
-          const MediaSettings(
-            resolutionPreset: ResolutionPreset.low,
-            fps: 15,
-            videoBitrate: 200000,
-            audioBitrate: 32000,
-            enableAudio: true,
-          ),
+          ResolutionPreset.high,
         );
         final Future<void> initializeFuture = camera.initializeCamera(cameraId);
         camera.cameraEventStreamController.add(CameraInitializedEvent(
@@ -470,19 +432,13 @@ void main() {
           },
         );
         camera = MethodChannelCamera();
-        cameraId = await camera.createCameraWithSettings(
+        cameraId = await camera.createCamera(
           const CameraDescription(
             name: 'Test',
             lensDirection: CameraLensDirection.back,
             sensorOrientation: 0,
           ),
-          const MediaSettings(
-            resolutionPreset: ResolutionPreset.low,
-            fps: 15,
-            videoBitrate: 200000,
-            audioBitrate: 32000,
-            enableAudio: true,
-          ),
+          ResolutionPreset.high,
         );
         final Future<void> initializeFuture = camera.initializeCamera(cameraId);
         camera.cameraEventStreamController.add(
@@ -528,13 +484,11 @@ void main() {
         ]);
         expect(cameras.length, returnData.length);
         for (int i = 0; i < returnData.length; i++) {
-          final Map<String, Object?> typedData =
-              (returnData[i] as Map<dynamic, dynamic>).cast<String, Object?>();
           final CameraDescription cameraDescription = CameraDescription(
-            name: typedData['name']! as String,
-            lensDirection:
-                parseCameraLensDirection(typedData['lensFacing']! as String),
-            sensorOrientation: typedData['sensorOrientation']! as int,
+            name: returnData[i]['name']! as String,
+            lensDirection: parseCameraLensDirection(
+                returnData[i]['lensFacing']! as String),
+            sensorOrientation: returnData[i]['sensorOrientation']! as int,
           );
           expect(cameras[i], cameraDescription);
         }
@@ -615,31 +569,7 @@ void main() {
           isMethodCall('startVideoRecording', arguments: <String, Object?>{
             'cameraId': cameraId,
             'maxVideoDuration': null,
-            'enableStream': false,
           }),
-        ]);
-      });
-
-      test('Should set description while recording', () async {
-        // Arrange
-        final MethodChannelMock channel = MethodChannelMock(
-          channelName: 'plugins.flutter.io/camera',
-          methods: <String, dynamic>{'setDescriptionWhileRecording': null},
-        );
-
-        // Act
-        const CameraDescription cameraDescription = CameraDescription(
-            name: 'Test',
-            lensDirection: CameraLensDirection.back,
-            sensorOrientation: 0);
-        await camera.setDescriptionWhileRecording(cameraDescription);
-
-        // Assert
-        expect(channel.log, <Matcher>[
-          isMethodCall('setDescriptionWhileRecording',
-              arguments: <String, Object?>{
-                'cameraName': cameraDescription.name
-              }),
         ]);
       });
 
@@ -661,8 +591,7 @@ void main() {
         expect(channel.log, <Matcher>[
           isMethodCall('startVideoRecording', arguments: <String, Object?>{
             'cameraId': cameraId,
-            'maxVideoDuration': 10000,
-            'enableStream': false,
+            'maxVideoDuration': 10000
           }),
         ]);
       });
@@ -1025,6 +954,7 @@ void main() {
             'setZoomLevel': PlatformException(
               code: 'ZOOM_ERROR',
               message: 'Illegal zoom error',
+              details: null,
             )
           },
         );
@@ -1129,7 +1059,7 @@ void main() {
           isMethodCall('startImageStream', arguments: null),
         ]);
 
-        await subscription.cancel();
+        subscription.cancel();
       });
 
       test('Should stop streaming', () async {
@@ -1146,7 +1076,7 @@ void main() {
         final StreamSubscription<CameraImageData> subscription = camera
             .onStreamedFrameAvailable(cameraId)
             .listen((CameraImageData imageData) {});
-        await subscription.cancel();
+        subscription.cancel();
 
         // Assert
         expect(channel.log, <Matcher>[

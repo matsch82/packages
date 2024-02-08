@@ -4,6 +4,7 @@
 
 import 'dart:html';
 import 'dart:js_util' as js_util;
+import 'dart:ui';
 
 import 'package:camera_platform_interface/camera_platform_interface.dart';
 import 'package:camera_web/src/camera.dart';
@@ -21,7 +22,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('CameraService', () {
-    const int cameraId = 1;
+    const int cameraId = 0;
 
     late Window window;
     late Navigator navigator;

@@ -136,7 +136,7 @@ void main() {
       const CameraInitializedEvent event = CameraInitializedEvent(
           1, 1024, 640, ExposureMode.auto, true, FocusMode.auto, true);
       final int expectedHashCode = Object.hash(
-          event.cameraId.hashCode,
+          event.cameraId,
           event.previewWidth,
           event.previewHeight,
           event.exposureMode,
@@ -222,11 +222,8 @@ void main() {
     test('hashCode should match hashCode of all properties', () {
       const CameraResolutionChangedEvent event =
           CameraResolutionChangedEvent(1, 1024, 640);
-      final int expectedHashCode = Object.hash(
-        event.cameraId.hashCode,
-        event.captureWidth,
-        event.captureHeight,
-      );
+      final int expectedHashCode =
+          Object.hash(event.cameraId, event.captureWidth, event.captureHeight);
 
       expect(event.hashCode, expectedHashCode);
     });
@@ -329,7 +326,7 @@ void main() {
     test('hashCode should match hashCode of all properties', () {
       const CameraErrorEvent event = CameraErrorEvent(1, 'Error');
       final int expectedHashCode =
-          Object.hash(event.cameraId.hashCode, event.description);
+          Object.hash(event.cameraId, event.description);
 
       expect(event.hashCode, expectedHashCode);
     });
