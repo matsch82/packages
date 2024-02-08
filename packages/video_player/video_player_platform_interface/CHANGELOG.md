@@ -1,45 +1,5 @@
-## 6.2.1
+## NEXT
 
-* Adds pub topics to package metadata.
-* Updates minimum supported SDK version to Flutter 3.7/Dart 2.19.
-
-## 6.2.0
-
-* Updates minimum supported SDK version to Flutter 3.3/Dart 2.18.
-* Adds web options to customize control's list and displaying context menu.
-
-## 6.1.0
-
-* Aligns Dart and Flutter SDK constraints.
-* Adds the `VideoEventType.isPlayingStateUpdate` event to track changes in play / pause state with
-  the underlying video player.
-
-## 6.0.2
-
-* Updates links for the merge of flutter/plugins into flutter/packages.
-* Updates minimum Flutter version to 3.0.
-
-## 6.0.1
-
-* Fixes comment describing file URI construction.
-
-## 6.0.0
-
-* **BREAKING CHANGE**: Removes `MethodChannelVideoPlayer`. The default
-  implementation is now only a placeholder with no functionality;
-  implementations of `video_player` must include their own `VideoPlayerPlatform`
-  Dart implementation.
-* Updates minimum Flutter version to 2.10.
-* Fixes violations of new analysis option use_named_constants.
-
-## 5.1.4
-
-* Fixes avoid_redundant_argument_values lint warnings and minor typos.
-* Ignores unnecessary import warnings in preparation for [upcoming Flutter changes](https://github.com/flutter/flutter/pull/106316).
-
-## 5.1.3
-
-* Updates references to the obsolete master branch.
 * Removes unnecessary imports.
 
 ## 5.1.2

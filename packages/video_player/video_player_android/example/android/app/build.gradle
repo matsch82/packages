@@ -25,9 +25,11 @@ apply plugin: 'com.android.application'
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
-    namespace 'io.flutter.plugins.videoplayerexample'
-    compileSdkVersion flutter.compileSdkVersion
+    compileSdkVersion 31
 
+    lintOptions {
+        disable 'InvalidPackage'
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -49,9 +51,6 @@ android {
             signingConfig signingConfigs.debug
         }
     }
-    lint {
-        disable 'InvalidPackage'
-    }
 }
 
 flutter {
@@ -60,8 +59,8 @@ flutter {
 
 dependencies {
     testImplementation 'junit:junit:4.13'
-    testImplementation 'org.robolectric:robolectric:4.10.3'
-    testImplementation 'org.mockito:mockito-core:5.0.0'
+    testImplementation 'org.robolectric:robolectric:4.4'
+    testImplementation 'org.mockito:mockito-core:3.5.13'
     androidTestImplementation 'androidx.test:runner:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
 }

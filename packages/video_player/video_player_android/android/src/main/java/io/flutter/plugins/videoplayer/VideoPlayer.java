@@ -56,13 +56,9 @@ final class VideoPlayer {
 
   private final EventChannel eventChannel;
 
-  private static final String USER_AGENT = "User-Agent";
-
   @VisibleForTesting boolean isInitialized = false;
 
   private final VideoPlayerOptions options;
-
-  private DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory();
 
   VideoPlayer(
       Context context,
@@ -77,13 +73,25 @@ final class VideoPlayer {
     this.options = options;
 
     ExoPlayer exoPlayer = new ExoPlayer.Builder(context).build();
+
     Uri uri = Uri.parse(dataSource);
+    DataSource.Factory dataSourceFactory;
 
-    buildHttpDataSourceFactory(httpHeaders);
-    DataSource.Factory dataSourceFactory =
-        new DefaultDataSource.Factory(context, httpDataSourceFactory);
+    if (isHTTP(uri)) {
+      DefaultHttpDataSource.Factory httpDataSourceFactory =
+          new DefaultHttpDataSource.Factory()
+              .setUserAgent("ExoPlayer")
+              .setAllowCrossProtocolRedirects(true);
 
-    MediaSource mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint);
+      if (httpHeaders != null && !httpHeaders.isEmpty()) {
+        httpDataSourceFactory.setDefaultRequestProperties(httpHeaders);
+      }
+      dataSourceFactory = httpDataSourceFactory;
+    } else {
+      dataSourceFactory = new DefaultDataSource.Factory(context);
+    }
+
+    MediaSource mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, context);
 
     exoPlayer.setMediaSource(mediaSource);
     exoPlayer.prepare();
@@ -98,49 +106,40 @@ final class VideoPlayer {
       EventChannel eventChannel,
       TextureRegistry.SurfaceTextureEntry textureEntry,
       VideoPlayerOptions options,
-      QueuingEventSink eventSink,
-      DefaultHttpDataSource.Factory httpDataSourceFactory) {
+      QueuingEventSink eventSink) {
     this.eventChannel = eventChannel;
     this.textureEntry = textureEntry;
     this.options = options;
-    this.httpDataSourceFactory = httpDataSourceFactory;
 
     setUpVideoPlayer(exoPlayer, eventSink);
   }
 
-  @VisibleForTesting
-  public void buildHttpDataSourceFactory(@NonNull Map<String, String> httpHeaders) {
-    final boolean httpHeadersNotEmpty = !httpHeaders.isEmpty();
-    final String userAgent =
-        httpHeadersNotEmpty && httpHeaders.containsKey(USER_AGENT)
-            ? httpHeaders.get(USER_AGENT)
-            : "ExoPlayer";
-
-    httpDataSourceFactory.setUserAgent(userAgent).setAllowCrossProtocolRedirects(true);
-
-    if (httpHeadersNotEmpty) {
-      httpDataSourceFactory.setDefaultRequestProperties(httpHeaders);
+  private static boolean isHTTP(Uri uri) {
+    if (uri == null || uri.getScheme() == null) {
+      return false;
     }
+    String scheme = uri.getScheme();
+    return scheme.equals("http") || scheme.equals("https");
   }
 
   private MediaSource buildMediaSource(
-      Uri uri, DataSource.Factory mediaDataSourceFactory, String formatHint) {
+      Uri uri, DataSource.Factory mediaDataSourceFactory, String formatHint, Context context) {
     int type;
     if (formatHint == null) {
-      type = Util.inferContentType(uri);
+      type = Util.inferContentType(uri.getLastPathSegment());
     } else {
       switch (formatHint) {
         case FORMAT_SS:
-          type = C.CONTENT_TYPE_SS;
+          type = C.TYPE_SS;
           break;
         case FORMAT_DASH:
-          type = C.CONTENT_TYPE_DASH;
+          type = C.TYPE_DASH;
           break;
         case FORMAT_HLS:
-          type = C.CONTENT_TYPE_HLS;
+          type = C.TYPE_HLS;
           break;
         case FORMAT_OTHER:
-          type = C.CONTENT_TYPE_OTHER;
+          type = C.TYPE_OTHER;
           break;
         default:
           type = -1;
@@ -148,18 +147,20 @@ final class VideoPlayer {
       }
     }
     switch (type) {
-      case C.CONTENT_TYPE_SS:
+      case C.TYPE_SS:
         return new SsMediaSource.Factory(
-                new DefaultSsChunkSource.Factory(mediaDataSourceFactory), mediaDataSourceFactory)
+                new DefaultSsChunkSource.Factory(mediaDataSourceFactory),
+                new DefaultDataSource.Factory(context, mediaDataSourceFactory))
             .createMediaSource(MediaItem.fromUri(uri));
-      case C.CONTENT_TYPE_DASH:
+      case C.TYPE_DASH:
         return new DashMediaSource.Factory(
-                new DefaultDashChunkSource.Factory(mediaDataSourceFactory), mediaDataSourceFactory)
+                new DefaultDashChunkSource.Factory(mediaDataSourceFactory),
+                new DefaultDataSource.Factory(context, mediaDataSourceFactory))
             .createMediaSource(MediaItem.fromUri(uri));
-      case C.CONTENT_TYPE_HLS:
+      case C.TYPE_HLS:
         return new HlsMediaSource.Factory(mediaDataSourceFactory)
             .createMediaSource(MediaItem.fromUri(uri));
-      case C.CONTENT_TYPE_OTHER:
+      case C.TYPE_OTHER:
         return new ProgressiveMediaSource.Factory(mediaDataSourceFactory)
             .createMediaSource(MediaItem.fromUri(uri));
       default:
@@ -225,20 +226,10 @@ final class VideoPlayer {
           }
 
           @Override
-          public void onPlayerError(@NonNull final PlaybackException error) {
+          public void onPlayerError(final PlaybackException error) {
             setBuffering(false);
             if (eventSink != null) {
               eventSink.error("VideoError", "Video player had error " + error, null);
-            }
-          }
-
-          @Override
-          public void onIsPlayingChanged(boolean isPlaying) {
-            if (eventSink != null) {
-              Map<String, Object> event = new HashMap<>();
-              event.put("event", "isPlayingStateUpdate");
-              event.put("isPlaying", isPlaying);
-              eventSink.success(event);
             }
           }
         });
@@ -255,8 +246,7 @@ final class VideoPlayer {
 
   private static void setAudioAttributes(ExoPlayer exoPlayer, boolean isMixMode) {
     exoPlayer.setAudioAttributes(
-        new AudioAttributes.Builder().setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
-        !isMixMode);
+        new AudioAttributes.Builder().setContentType(C.CONTENT_TYPE_MOVIE).build(), !isMixMode);
   }
 
   void play() {

@@ -13,10 +13,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
-// SSLSocketFactory does not have nullability annotations.
-@SuppressWarnings("UnknownNullness")
 public class CustomSSLSocketFactory extends SSLSocketFactory {
-  private final SSLSocketFactory sslSocketFactory;
+  private SSLSocketFactory sslSocketFactory;
 
   public CustomSSLSocketFactory() throws KeyManagementException, NoSuchAlgorithmException {
     SSLContext context = SSLContext.getInstance("TLS");

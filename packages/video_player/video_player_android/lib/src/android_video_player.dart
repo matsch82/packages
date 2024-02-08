@@ -49,7 +49,6 @@ class AndroidVideoPlayer extends VideoPlayerPlatform {
         break;
       case DataSourceType.file:
         uri = dataSource.uri;
-        httpHeaders = dataSource.httpHeaders;
         break;
       case DataSourceType.contentUri:
         uri = dataSource.uri;
@@ -148,11 +147,6 @@ class AndroidVideoPlayer extends VideoPlayerPlatform {
           return VideoEvent(eventType: VideoEventType.bufferingStart);
         case 'bufferingEnd':
           return VideoEvent(eventType: VideoEventType.bufferingEnd);
-        case 'isPlayingStateUpdate':
-          return VideoEvent(
-            eventType: VideoEventType.isPlayingStateUpdate,
-            isPlaying: map['isPlaying'] as bool,
-          );
         default:
           return VideoEvent(eventType: VideoEventType.unknown);
       }

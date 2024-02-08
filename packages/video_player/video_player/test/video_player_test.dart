@@ -4,24 +4,16 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
-import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
-const String _localhost = 'https://127.0.0.1';
-final Uri _localhostUri = Uri.parse(_localhost);
-
 class FakeController extends ValueNotifier<VideoPlayerValue>
     implements VideoPlayerController {
-  FakeController() : super(const VideoPlayerValue(duration: Duration.zero));
-
-  FakeController.value(super.value);
+  FakeController() : super(VideoPlayerValue(duration: Duration.zero));
 
   @override
   Future<void> dispose() async {
@@ -109,14 +101,7 @@ class _FakeClosedCaptionFile extends ClosedCaptionFile {
 }
 
 void main() {
-  late FakeVideoPlayerPlatform fakeVideoPlayerPlatform;
-
-  setUp(() {
-    fakeVideoPlayerPlatform = FakeVideoPlayerPlatform();
-    VideoPlayerPlatform.instance = fakeVideoPlayerPlatform;
-  });
-
-  void verifyPlayStateRespondsToLifecycle(
+  void _verifyPlayStateRespondsToLifecycle(
     VideoPlayerController controller, {
     required bool shouldPlayInBackground,
   }) {
@@ -164,36 +149,6 @@ void main() {
         findsOneWidget);
   });
 
-  testWidgets('non-zero rotationCorrection value is used',
-      (WidgetTester tester) async {
-    final FakeController controller = FakeController.value(
-        const VideoPlayerValue(
-            duration: Duration.zero, rotationCorrection: 180));
-    controller.textureId = 1;
-    await tester.pumpWidget(VideoPlayer(controller));
-    final Transform actualRotationCorrection =
-        find.byType(Transform).evaluate().single.widget as Transform;
-    final Float64List actualRotationCorrectionStorage =
-        actualRotationCorrection.transform.storage;
-    final Float64List expectedMatrixStorage =
-        Matrix4.rotationZ(math.pi).storage;
-    expect(actualRotationCorrectionStorage.length,
-        equals(expectedMatrixStorage.length));
-    for (int i = 0; i < actualRotationCorrectionStorage.length; i++) {
-      expect(actualRotationCorrectionStorage[i],
-          moreOrLessEquals(expectedMatrixStorage[i]));
-    }
-  });
-
-  testWidgets('no transform when rotationCorrection is zero',
-      (WidgetTester tester) async {
-    final FakeController controller =
-        FakeController.value(const VideoPlayerValue(duration: Duration.zero));
-    controller.textureId = 1;
-    await tester.pumpWidget(VideoPlayer(controller));
-    expect(find.byType(Transform), findsNothing);
-  });
-
   group('ClosedCaption widget', () {
     testWidgets('uses a default text style', (WidgetTester tester) async {
       const String text = 'foo';
@@ -221,7 +176,8 @@ void main() {
     });
 
     testWidgets('handles null text', (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: ClosedCaption()));
+      await tester
+          .pumpWidget(const MaterialApp(home: ClosedCaption(text: null)));
       expect(find.byType(Text), findsNothing);
     });
 
@@ -246,7 +202,34 @@ void main() {
   });
 
   group('VideoPlayerController', () {
-    group('legacy initialize', () {
+    late FakeVideoPlayerPlatform fakeVideoPlayerPlatform;
+
+    setUp(() {
+      fakeVideoPlayerPlatform = FakeVideoPlayerPlatform();
+      VideoPlayerPlatform.instance = fakeVideoPlayerPlatform;
+    });
+
+    group('initialize', () {
+      test('started app lifecycle observing', () async {
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
+        );
+        await controller.initialize();
+        await controller.play();
+        _verifyPlayStateRespondsToLifecycle(controller,
+            shouldPlayInBackground: false);
+      });
+
+      test('asset', () async {
+        final VideoPlayerController controller = VideoPlayerController.asset(
+          'a.avi',
+        );
+        await controller.initialize();
+
+        expect(fakeVideoPlayerPlatform.dataSources[0].asset, 'a.avi');
+        expect(fakeVideoPlayerPlatform.dataSources[0].package, null);
+      });
+
       test('network', () async {
         final VideoPlayerController controller = VideoPlayerController.network(
           'https://127.0.0.1',
@@ -308,99 +291,11 @@ void main() {
           <String, String>{'Authorization': 'Bearer token'},
         );
       });
-    });
-    group('initialize', () {
-      test('started app lifecycle observing', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(
-          Uri.parse('https://127.0.0.1'),
-        );
-        await controller.initialize();
-        await controller.play();
-        verifyPlayStateRespondsToLifecycle(controller,
-            shouldPlayInBackground: false);
-      });
 
-      test('asset', () async {
-        final VideoPlayerController controller = VideoPlayerController.asset(
-          'a.avi',
+      test('init errors', () async {
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'http://testing.com/invalid_url',
         );
-        await controller.initialize();
-
-        expect(fakeVideoPlayerPlatform.dataSources[0].asset, 'a.avi');
-        expect(fakeVideoPlayerPlatform.dataSources[0].package, null);
-      });
-
-      test('network url', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(Uri.parse('https://127.0.0.1'));
-        await controller.initialize();
-
-        expect(
-          fakeVideoPlayerPlatform.dataSources[0].uri,
-          'https://127.0.0.1',
-        );
-        expect(
-          fakeVideoPlayerPlatform.dataSources[0].formatHint,
-          null,
-        );
-        expect(
-          fakeVideoPlayerPlatform.dataSources[0].httpHeaders,
-          <String, String>{},
-        );
-      });
-
-      test('network url with hint', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(
-          Uri.parse('https://127.0.0.1'),
-          formatHint: VideoFormat.dash,
-        );
-        await controller.initialize();
-
-        expect(
-          fakeVideoPlayerPlatform.dataSources[0].uri,
-          'https://127.0.0.1',
-        );
-        expect(
-          fakeVideoPlayerPlatform.dataSources[0].formatHint,
-          VideoFormat.dash,
-        );
-        expect(
-          fakeVideoPlayerPlatform.dataSources[0].httpHeaders,
-          <String, String>{},
-        );
-      });
-
-      test('network url with some headers', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(
-          Uri.parse('https://127.0.0.1'),
-          httpHeaders: <String, String>{'Authorization': 'Bearer token'},
-        );
-        await controller.initialize();
-
-        expect(
-          fakeVideoPlayerPlatform.dataSources[0].uri,
-          'https://127.0.0.1',
-        );
-        expect(
-          fakeVideoPlayerPlatform.dataSources[0].formatHint,
-          null,
-        );
-        expect(
-          fakeVideoPlayerPlatform.dataSources[0].httpHeaders,
-          <String, String>{'Authorization': 'Bearer token'},
-        );
-      });
-
-      test(
-          'when controller is initialized with invalid url it should throw VideoError',
-          () async {
-        final Uri invalidUrl = Uri.parse('http://testing.com/invalid_url');
-
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(invalidUrl);
 
         late Object error;
         fakeVideoPlayerPlatform.forceInitError = true;
@@ -414,57 +309,14 @@ void main() {
             VideoPlayerController.file(File('a.avi'));
         await controller.initialize();
 
-        final String uri = fakeVideoPlayerPlatform.dataSources[0].uri!;
-        expect(uri.startsWith('file:///'), true, reason: 'Actual string: $uri');
-        expect(uri.endsWith('/a.avi'), true, reason: 'Actual string: $uri');
-      }, skip: kIsWeb /* Web does not support file assets. */);
+        expect(fakeVideoPlayerPlatform.dataSources[0].uri, 'file://a.avi');
+      });
 
-      test('file with special characters', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.file(File('A #1 Hit.avi'));
-        await controller.initialize();
-
-        final String uri = fakeVideoPlayerPlatform.dataSources[0].uri!;
-        expect(uri.startsWith('file:///'), true, reason: 'Actual string: $uri');
-        expect(uri.endsWith('/A%20%231%20Hit.avi'), true,
-            reason: 'Actual string: $uri');
-      }, skip: kIsWeb /* Web does not support file assets. */);
-
-      test('file with headers (m3u8)', () async {
-        final VideoPlayerController controller = VideoPlayerController.file(
-          File('a.avi'),
-          httpHeaders: <String, String>{'Authorization': 'Bearer token'},
-        );
-        await controller.initialize();
-
-        final String uri = fakeVideoPlayerPlatform.dataSources[0].uri!;
-        expect(uri.startsWith('file:///'), true, reason: 'Actual string: $uri');
-        expect(uri.endsWith('/a.avi'), true, reason: 'Actual string: $uri');
-
-        expect(
-          fakeVideoPlayerPlatform.dataSources[0].httpHeaders,
-          <String, String>{'Authorization': 'Bearer token'},
-        );
-      }, skip: kIsWeb /* Web does not support file assets. */);
       test('successful initialize on controller with error clears error',
           () async {
         final VideoPlayerController controller = VideoPlayerController.network(
           'https://127.0.0.1',
         );
-        fakeVideoPlayerPlatform.forceInitError = true;
-        await controller.initialize().catchError((dynamic e) {});
-        expect(controller.value.hasError, equals(true));
-        fakeVideoPlayerPlatform.forceInitError = false;
-        await controller.initialize();
-        expect(controller.value.hasError, equals(false));
-      });
-
-      test(
-          'given controller with error when initialization succeeds it should clear error',
-          () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(_localhostUri);
-
         fakeVideoPlayerPlatform.forceInitError = true;
         await controller.initialize().catchError((dynamic e) {});
         expect(controller.value.hasError, equals(true));
@@ -483,12 +335,12 @@ void main() {
     });
 
     test('dispose', () async {
-      final VideoPlayerController controller =
-          VideoPlayerController.networkUrl(_localhostUri);
-
+      final VideoPlayerController controller = VideoPlayerController.network(
+        'https://127.0.0.1',
+      );
       expect(
           controller.textureId, VideoPlayerController.kUninitializedTextureId);
-      expect(await controller.position, Duration.zero);
+      expect(await controller.position, const Duration(seconds: 0));
       await controller.initialize();
 
       await controller.dispose();
@@ -497,20 +349,10 @@ void main() {
       expect(await controller.position, isNull);
     });
 
-    test('calling dispose() on disposed controller does not throw', () async {
-      final VideoPlayerController controller =
-          VideoPlayerController.networkUrl(_localhostUri);
-
-      await controller.initialize();
-      await controller.dispose();
-
-      expect(() async => controller.dispose(), returnsNormally);
-    });
-
     test('play', () async {
-      final VideoPlayerController controller =
-          VideoPlayerController.networkUrl(Uri.parse('https://127.0.0.1'));
-
+      final VideoPlayerController controller = VideoPlayerController.network(
+        'https://127.0.0.1',
+      );
       await controller.initialize();
       expect(controller.value.isPlaying, isFalse);
       await controller.play();
@@ -527,9 +369,9 @@ void main() {
     });
 
     test('play before initialized does not call platform', () async {
-      final VideoPlayerController controller =
-          VideoPlayerController.networkUrl(_localhostUri);
-
+      final VideoPlayerController controller = VideoPlayerController.network(
+        'https://127.0.0.1',
+      );
       expect(controller.value.isInitialized, isFalse);
 
       await controller.play();
@@ -538,9 +380,9 @@ void main() {
     });
 
     test('play restarts from beginning if video is at end', () async {
-      final VideoPlayerController controller =
-          VideoPlayerController.networkUrl(_localhostUri);
-
+      final VideoPlayerController controller = VideoPlayerController.network(
+        'https://127.0.0.1',
+      );
       await controller.initialize();
       const Duration nonzeroDuration = Duration(milliseconds: 100);
       controller.value = controller.value.copyWith(duration: nonzeroDuration);
@@ -555,9 +397,9 @@ void main() {
     });
 
     test('setLooping', () async {
-      final VideoPlayerController controller =
-          VideoPlayerController.networkUrl(_localhostUri);
-
+      final VideoPlayerController controller = VideoPlayerController.network(
+        'https://127.0.0.1',
+      );
       await controller.initialize();
       expect(controller.value.isLooping, isFalse);
       await controller.setLooping(true);
@@ -566,9 +408,9 @@ void main() {
     });
 
     test('pause', () async {
-      final VideoPlayerController controller =
-          VideoPlayerController.networkUrl(_localhostUri);
-
+      final VideoPlayerController controller = VideoPlayerController.network(
+        'https://127.0.0.1',
+      );
       await controller.initialize();
       await controller.play();
       expect(controller.value.isPlaying, isTrue);
@@ -581,11 +423,11 @@ void main() {
 
     group('seekTo', () {
       test('works', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(_localhostUri);
-
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
+        );
         await controller.initialize();
-        expect(await controller.position, Duration.zero);
+        expect(await controller.position, const Duration(seconds: 0));
 
         await controller.seekTo(const Duration(milliseconds: 500));
 
@@ -593,9 +435,9 @@ void main() {
       });
 
       test('before initialized does not call platform', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(_localhostUri);
-
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
+        );
         expect(controller.value.isInitialized, isFalse);
 
         await controller.seekTo(const Duration(milliseconds: 500));
@@ -604,25 +446,25 @@ void main() {
       });
 
       test('clamps values that are too high or low', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(_localhostUri);
-
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
+        );
         await controller.initialize();
-        expect(await controller.position, Duration.zero);
+        expect(await controller.position, const Duration(seconds: 0));
 
         await controller.seekTo(const Duration(seconds: 100));
         expect(await controller.position, const Duration(seconds: 1));
 
         await controller.seekTo(const Duration(seconds: -100));
-        expect(await controller.position, Duration.zero);
+        expect(await controller.position, const Duration(seconds: 0));
       });
     });
 
     group('setVolume', () {
       test('works', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(_localhostUri);
-
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
+        );
         await controller.initialize();
         expect(controller.value.volume, 1.0);
 
@@ -633,9 +475,9 @@ void main() {
       });
 
       test('clamps values that are too high or low', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(_localhostUri);
-
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
+        );
         await controller.initialize();
         expect(controller.value.volume, 1.0);
 
@@ -649,9 +491,9 @@ void main() {
 
     group('setPlaybackSpeed', () {
       test('works', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(_localhostUri);
-
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
+        );
         await controller.initialize();
         expect(controller.value.playbackSpeed, 1.0);
 
@@ -662,9 +504,9 @@ void main() {
       });
 
       test('rejects negative values', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(_localhostUri);
-
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
+        );
         await controller.initialize();
         expect(controller.value.playbackSpeed, 1.0);
 
@@ -675,9 +517,9 @@ void main() {
     group('scrubbing', () {
       testWidgets('restarts on release if already playing',
           (WidgetTester tester) async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(_localhostUri);
-
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
+        );
         await controller.initialize();
         final VideoProgressIndicator progressWidget =
             VideoProgressIndicator(controller, allowScrubbing: true);
@@ -702,9 +544,9 @@ void main() {
 
       testWidgets('does not restart when dragging to end',
           (WidgetTester tester) async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(_localhostUri);
-
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
+        );
         await controller.initialize();
         final VideoProgressIndicator progressWidget =
             VideoProgressIndicator(controller, allowScrubbing: true);
@@ -728,14 +570,13 @@ void main() {
 
     group('caption', () {
       test('works when seeking', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(
-          _localhostUri,
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
           closedCaptionFile: _loadClosedCaption(),
         );
 
         await controller.initialize();
-        expect(controller.value.position, Duration.zero);
+        expect(controller.value.position, const Duration());
         expect(controller.value.caption.text, '');
 
         await controller.seekTo(const Duration(milliseconds: 100));
@@ -761,15 +602,14 @@ void main() {
       });
 
       test('works when seeking with captionOffset positive', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(
-          _localhostUri,
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
           closedCaptionFile: _loadClosedCaption(),
         );
 
         await controller.initialize();
         controller.setCaptionOffset(const Duration(milliseconds: 100));
-        expect(controller.value.position, Duration.zero);
+        expect(controller.value.position, const Duration());
         expect(controller.value.caption.text, '');
 
         await controller.seekTo(const Duration(milliseconds: 100));
@@ -798,15 +638,14 @@ void main() {
       });
 
       test('works when seeking with captionOffset negative', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(
-          _localhostUri,
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
           closedCaptionFile: _loadClosedCaption(),
         );
 
         await controller.initialize();
         controller.setCaptionOffset(const Duration(milliseconds: -100));
-        expect(controller.value.position, Duration.zero);
+        expect(controller.value.position, const Duration());
         expect(controller.value.caption.text, '');
 
         await controller.seekTo(const Duration(milliseconds: 100));
@@ -837,10 +676,9 @@ void main() {
         expect(controller.value.caption.text, 'one');
       });
 
-      test('setClosedCaptionFile loads caption file', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(
-          _localhostUri,
+      test('setClosedCapitonFile loads caption file', () async {
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
         );
 
         await controller.initialize();
@@ -853,10 +691,9 @@ void main() {
         );
       });
 
-      test('setClosedCaptionFile removes/changes caption file', () async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(
-          _localhostUri,
+      test('setClosedCapitonFile removes/changes caption file', () async {
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
           closedCaptionFile: _loadClosedCaption(),
         );
 
@@ -873,11 +710,9 @@ void main() {
 
     group('Platform callbacks', () {
       testWidgets('playing completed', (WidgetTester tester) async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(
-          _localhostUri,
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
         );
-
         await controller.initialize();
         const Duration nonzeroDuration = Duration(milliseconds: 100);
         controller.value = controller.value.copyWith(duration: nonzeroDuration);
@@ -895,36 +730,10 @@ void main() {
         expect(controller.value.position, nonzeroDuration);
       });
 
-      testWidgets('playback status', (WidgetTester tester) async {
-        final VideoPlayerController controller = VideoPlayerController.network(
-          'https://.0.0.1',
-        );
-        await controller.initialize();
-        expect(controller.value.isPlaying, isFalse);
-        final StreamController<VideoEvent> fakeVideoEventStream =
-            fakeVideoPlayerPlatform.streams[controller.textureId]!;
-
-        fakeVideoEventStream.add(VideoEvent(
-          eventType: VideoEventType.isPlayingStateUpdate,
-          isPlaying: true,
-        ));
-        await tester.pumpAndSettle();
-        expect(controller.value.isPlaying, isTrue);
-
-        fakeVideoEventStream.add(VideoEvent(
-          eventType: VideoEventType.isPlayingStateUpdate,
-          isPlaying: false,
-        ));
-        await tester.pumpAndSettle();
-        expect(controller.value.isPlaying, isFalse);
-      });
-
       testWidgets('buffering status', (WidgetTester tester) async {
-        final VideoPlayerController controller =
-            VideoPlayerController.networkUrl(
-          _localhostUri,
+        final VideoPlayerController controller = VideoPlayerController.network(
+          'https://127.0.0.1',
         );
-
         await controller.initialize();
         expect(controller.value.isBuffering, false);
         expect(controller.value.buffered, isEmpty);
@@ -936,7 +745,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(controller.value.isBuffering, isTrue);
 
-        const Duration bufferStart = Duration.zero;
+        const Duration bufferStart = Duration(seconds: 0);
         const Duration bufferEnd = Duration(milliseconds: 500);
         fakeVideoEventStream.add(VideoEvent(
             eventType: VideoEventType.bufferingUpdate,
@@ -983,7 +792,7 @@ void main() {
 
   group('VideoPlayerValue', () {
     test('uninitialized()', () {
-      const VideoPlayerValue uninitialized = VideoPlayerValue.uninitialized();
+      final VideoPlayerValue uninitialized = VideoPlayerValue.uninitialized();
 
       expect(uninitialized.duration, equals(Duration.zero));
       expect(uninitialized.position, equals(Duration.zero));
@@ -1004,7 +813,7 @@ void main() {
 
     test('erroneous()', () {
       const String errorMessage = 'foo';
-      const VideoPlayerValue error = VideoPlayerValue.erroneous(errorMessage);
+      final VideoPlayerValue error = VideoPlayerValue.erroneous(errorMessage);
 
       expect(error.duration, equals(Duration.zero));
       expect(error.position, equals(Duration.zero));
@@ -1031,7 +840,7 @@ void main() {
           text: 'foo', number: 0, start: Duration.zero, end: Duration.zero);
       const Duration captionOffset = Duration(milliseconds: 250);
       final List<DurationRange> buffered = <DurationRange>[
-        DurationRange(Duration.zero, const Duration(seconds: 4))
+        DurationRange(const Duration(seconds: 0), const Duration(seconds: 4))
       ];
       const bool isInitialized = true;
       const bool isPlaying = true;
@@ -1069,32 +878,31 @@ void main() {
           'isBuffering: true, '
           'volume: 0.5, '
           'playbackSpeed: 1.5, '
-          'errorDescription: null, '
-          'isCompleted: false),');
+          'errorDescription: null)');
     });
 
     group('copyWith()', () {
       test('exact copy', () {
-        const VideoPlayerValue original = VideoPlayerValue.uninitialized();
+        final VideoPlayerValue original = VideoPlayerValue.uninitialized();
         final VideoPlayerValue exactCopy = original.copyWith();
 
         expect(exactCopy.toString(), original.toString());
       });
       test('errorDescription is not persisted when copy with null', () {
-        const VideoPlayerValue original = VideoPlayerValue.erroneous('error');
+        final VideoPlayerValue original = VideoPlayerValue.erroneous('error');
         final VideoPlayerValue copy = original.copyWith(errorDescription: null);
 
         expect(copy.errorDescription, null);
       });
       test('errorDescription is changed when copy with another error', () {
-        const VideoPlayerValue original = VideoPlayerValue.erroneous('error');
+        final VideoPlayerValue original = VideoPlayerValue.erroneous('error');
         final VideoPlayerValue copy =
             original.copyWith(errorDescription: 'new error');
 
         expect(copy.errorDescription, 'new error');
       });
       test('errorDescription is changed when copy with error', () {
-        const VideoPlayerValue original = VideoPlayerValue.uninitialized();
+        final VideoPlayerValue original = VideoPlayerValue.uninitialized();
         final VideoPlayerValue copy =
             original.copyWith(errorDescription: 'new error');
 
@@ -1104,45 +912,45 @@ void main() {
 
     group('aspectRatio', () {
       test('640x480 -> 4:3', () {
-        const VideoPlayerValue value = VideoPlayerValue(
+        final VideoPlayerValue value = VideoPlayerValue(
           isInitialized: true,
-          size: Size(640, 480),
-          duration: Duration(seconds: 1),
+          size: const Size(640, 480),
+          duration: const Duration(seconds: 1),
         );
         expect(value.aspectRatio, 4 / 3);
       });
 
       test('no size -> 1.0', () {
-        const VideoPlayerValue value = VideoPlayerValue(
+        final VideoPlayerValue value = VideoPlayerValue(
           isInitialized: true,
-          duration: Duration(seconds: 1),
+          duration: const Duration(seconds: 1),
         );
         expect(value.aspectRatio, 1.0);
       });
 
       test('height = 0 -> 1.0', () {
-        const VideoPlayerValue value = VideoPlayerValue(
+        final VideoPlayerValue value = VideoPlayerValue(
           isInitialized: true,
-          size: Size(640, 0),
-          duration: Duration(seconds: 1),
+          size: const Size(640, 0),
+          duration: const Duration(seconds: 1),
         );
         expect(value.aspectRatio, 1.0);
       });
 
       test('width = 0 -> 1.0', () {
-        const VideoPlayerValue value = VideoPlayerValue(
+        final VideoPlayerValue value = VideoPlayerValue(
           isInitialized: true,
-          size: Size(0, 480),
-          duration: Duration(seconds: 1),
+          size: const Size(0, 480),
+          duration: const Duration(seconds: 1),
         );
         expect(value.aspectRatio, 1.0);
       });
 
       test('negative aspect ratio -> 1.0', () {
-        const VideoPlayerValue value = VideoPlayerValue(
+        final VideoPlayerValue value = VideoPlayerValue(
           isInitialized: true,
-          size: Size(640, -480),
-          duration: Duration(seconds: 1),
+          size: const Size(640, -480),
+          duration: const Duration(seconds: 1),
         );
         expect(value.aspectRatio, 1.0);
       });
@@ -1150,41 +958,46 @@ void main() {
   });
 
   group('VideoPlayerOptions', () {
-    test('setMixWithOthers', () async {
-      final VideoPlayerController controller = VideoPlayerController.networkUrl(
-        _localhostUri,
-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-      );
+    late FakeVideoPlayerPlatform fakeVideoPlayerPlatform;
 
+    setUp(() {
+      fakeVideoPlayerPlatform = FakeVideoPlayerPlatform();
+      VideoPlayerPlatform.instance = fakeVideoPlayerPlatform;
+    });
+
+    test('setMixWithOthers', () async {
+      final VideoPlayerController controller = VideoPlayerController.file(
+          File(''),
+          videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true));
       await controller.initialize();
       expect(controller.videoPlayerOptions!.mixWithOthers, true);
     });
 
     test('true allowBackgroundPlayback continues playback', () async {
-      final VideoPlayerController controller = VideoPlayerController.networkUrl(
-        _localhostUri,
+      final VideoPlayerController controller = VideoPlayerController.file(
+        File(''),
         videoPlayerOptions: VideoPlayerOptions(
           allowBackgroundPlayback: true,
         ),
       );
-
       await controller.initialize();
       await controller.play();
-      verifyPlayStateRespondsToLifecycle(
+      _verifyPlayStateRespondsToLifecycle(
         controller,
         shouldPlayInBackground: true,
       );
     });
 
     test('false allowBackgroundPlayback pauses playback', () async {
-      final VideoPlayerController controller = VideoPlayerController.networkUrl(
-        _localhostUri,
-        videoPlayerOptions: VideoPlayerOptions(),
+      final VideoPlayerController controller = VideoPlayerController.file(
+        File(''),
+        videoPlayerOptions: VideoPlayerOptions(
+          allowBackgroundPlayback: false,
+        ),
       );
-
       await controller.initialize();
       await controller.play();
-      verifyPlayStateRespondsToLifecycle(
+      _verifyPlayStateRespondsToLifecycle(
         controller,
         shouldPlayInBackground: false,
       );
@@ -1204,101 +1017,6 @@ void main() {
     expect(colors.playedColor, playedColor);
     expect(colors.bufferedColor, bufferedColor);
     expect(colors.backgroundColor, backgroundColor);
-  });
-
-  test('isCompleted updates on video end', () async {
-    final VideoPlayerController controller = VideoPlayerController.networkUrl(
-      _localhostUri,
-      videoPlayerOptions: VideoPlayerOptions(),
-    );
-
-    await controller.initialize();
-
-    final StreamController<VideoEvent> fakeVideoEventStream =
-        fakeVideoPlayerPlatform.streams[controller.textureId]!;
-
-    bool currentIsCompleted = controller.value.isCompleted;
-
-    final void Function() isCompletedTest = expectAsync0(() {});
-
-    controller.addListener(() async {
-      if (currentIsCompleted != controller.value.isCompleted) {
-        currentIsCompleted = controller.value.isCompleted;
-        if (controller.value.isCompleted) {
-          isCompletedTest();
-        }
-      }
-    });
-
-    fakeVideoEventStream.add(VideoEvent(eventType: VideoEventType.completed));
-  });
-
-  test('isCompleted updates on video play after completed', () async {
-    final VideoPlayerController controller = VideoPlayerController.networkUrl(
-      _localhostUri,
-      videoPlayerOptions: VideoPlayerOptions(),
-    );
-
-    await controller.initialize();
-
-    final StreamController<VideoEvent> fakeVideoEventStream =
-        fakeVideoPlayerPlatform.streams[controller.textureId]!;
-
-    bool currentIsCompleted = controller.value.isCompleted;
-
-    final void Function() isCompletedTest = expectAsync0(() {}, count: 2);
-    final void Function() isNoLongerCompletedTest = expectAsync0(() {});
-    bool hasLooped = false;
-
-    controller.addListener(() async {
-      if (currentIsCompleted != controller.value.isCompleted) {
-        currentIsCompleted = controller.value.isCompleted;
-        if (controller.value.isCompleted) {
-          isCompletedTest();
-          if (!hasLooped) {
-            fakeVideoEventStream.add(VideoEvent(
-                eventType: VideoEventType.isPlayingStateUpdate,
-                isPlaying: true));
-            hasLooped = !hasLooped;
-          }
-        } else {
-          isNoLongerCompletedTest();
-        }
-      }
-    });
-
-    fakeVideoEventStream.add(VideoEvent(eventType: VideoEventType.completed));
-  });
-
-  test('isCompleted updates on video seek to end', () async {
-    final VideoPlayerController controller = VideoPlayerController.networkUrl(
-      _localhostUri,
-      videoPlayerOptions: VideoPlayerOptions(),
-    );
-
-    await controller.initialize();
-
-    bool currentIsCompleted = controller.value.isCompleted;
-
-    final void Function() isCompletedTest = expectAsync0(() {});
-
-    controller.value =
-        controller.value.copyWith(duration: const Duration(seconds: 10));
-
-    controller.addListener(() async {
-      if (currentIsCompleted != controller.value.isCompleted) {
-        currentIsCompleted = controller.value.isCompleted;
-        if (controller.value.isCompleted) {
-          isCompletedTest();
-        }
-      }
-    });
-
-    // This call won't update isCompleted.
-    // The test will fail if `isCompletedTest` is called more than once.
-    await controller.seekTo(const Duration(seconds: 10));
-
-    await controller.seekTo(const Duration(seconds: 20));
   });
 }
 
@@ -1359,7 +1077,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<Duration> getPosition(int textureId) async {
     calls.add('position');
-    return _positions[textureId] ?? Duration.zero;
+    return _positions[textureId] ?? const Duration(seconds: 0);
   }
 
   @override
@@ -1386,11 +1104,6 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<void> setMixWithOthers(bool mixWithOthers) async {
     calls.add('setMixWithOthers');
-  }
-
-  @override
-  Widget buildView(int textureId) {
-    return Texture(textureId: textureId);
   }
 }
 

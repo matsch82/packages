@@ -38,7 +38,8 @@ void main() {
 
       expect(parsedFile.captions[0].start,
           const Duration(seconds: 5, milliseconds: 200));
-      expect(parsedFile.captions[0].end, const Duration(seconds: 6));
+      expect(parsedFile.captions[0].end,
+          const Duration(seconds: 6, milliseconds: 000));
       expect(parsedFile.captions[0].text,
           "You know I'm so excited my glasses are falling off here.");
     });
@@ -105,7 +106,7 @@ void main() {
     final Caption firstCaption = parsedFile.captions.single;
     expect(firstCaption.number, 1);
     expect(firstCaption.start, const Duration(seconds: 13));
-    expect(firstCaption.end, const Duration(seconds: 16));
+    expect(firstCaption.end, const Duration(seconds: 16, milliseconds: 0));
     expect(firstCaption.text, 'Valid');
   });
 }
@@ -154,7 +155,7 @@ WEBVTT
 00:05.200 --> 00:06.000 align:start size:50%
 <v Roger Bingham><i>You know I'm so excited my glasses are falling off here.</i>
 
-00:00:06.050 --> 00:00:06.150
+00:00:06.050 --> 00:00:06.150 
 <v Roger Bingham><i>I have a different time!</i>
 
 00:06.200 --> 00:06.900

@@ -1,16 +1,14 @@
-<?code-excerpt path-base="example/lib"?>
-
 # Video Player plugin for Flutter
 
 [![pub package](https://img.shields.io/pub/v/video_player.svg)](https://pub.dev/packages/video_player)
 
 A Flutter plugin for iOS, Android and Web for playing back video on a Widget surface.
 
-|             | Android | iOS   | macOS  | Web   |
-|-------------|---------|-------|--------|-------|
-| **Support** | SDK 16+ | 11.0+ | 10.14+ | Any\* |
+|             | Android | iOS  | Web   |
+|-------------|---------|------|-------|
+| **Support** | SDK 16+ | 9.0+ | Any\* |
 
-![The example app running in iOS](https://github.com/flutter/packages/blob/main/packages/video_player/video_player/doc/demo_ipod.gif?raw=true)
+![The example app running in iOS](https://github.com/flutter/plugins/blob/master/packages/video_player/video_player/doc/demo_ipod.gif?raw=true)
 
 ## Installation
 
@@ -33,12 +31,6 @@ Android Manifest file, located in `<project root>/android/app/src/main/AndroidMa
 <uses-permission android:name="android.permission.INTERNET"/>
 ```
 
-### macOS
-
-If you are using network-based videos, you will need to [add the
-`com.apple.security.network.client`
-entitlement](https://docs.flutter.dev/platform-integration/macos/building#entitlements-and-the-app-sandbox)
-
 ### Web
 
 > The Web platform does **not** suppport `dart:io`, so avoid using the `VideoPlayerController.file` constructor for the plugin. Using the constructor attempts to create a `VideoPlayerController.file` that will throw an `UnimplementedError`.
@@ -49,7 +41,7 @@ The `VideoPlayerOptions.mixWithOthers` option can't be implemented in web, at le
 
 ## Supported Formats
 
-- On iOS and macOS, the backing player is [AVPlayer](https://developer.apple.com/documentation/avfoundation/avplayer).
+- On iOS, the backing player is [AVPlayer](https://developer.apple.com/documentation/avfoundation/avplayer).
   The supported formats vary depending on the version of iOS, [AVURLAsset](https://developer.apple.com/documentation/avfoundation/avurlasset) class
   has [audiovisualTypes](https://developer.apple.com/documentation/avfoundation/avurlasset/1386800-audiovisualtypes?language=objc) that you can query for supported av formats.
 - On Android, the backing player is [ExoPlayer](https://google.github.io/ExoPlayer/),
@@ -58,29 +50,25 @@ The `VideoPlayerOptions.mixWithOthers` option can't be implemented in web, at le
 
 ## Example
 
-<?code-excerpt "basic.dart (basic-example)"?>
 ```dart
-import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter/material.dart';
 
-void main() => runApp(const VideoApp());
+void main() => runApp(VideoApp());
 
-/// Stateful widget to fetch and then display video content.
 class VideoApp extends StatefulWidget {
-  const VideoApp({super.key});
-
   @override
   _VideoAppState createState() => _VideoAppState();
 }
 
 class _VideoAppState extends State<VideoApp> {
-  late VideoPlayerController _controller;
+  VideoPlayerController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(
-        'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'))
+    _controller = VideoPlayerController.network(
+        'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4')
       ..initialize().then((_) {
         // Ensure the first frame is shown after the video is initialized, even before the play button has been pressed.
         setState(() {});
@@ -129,7 +117,7 @@ class _VideoAppState extends State<VideoApp> {
 The following section contains usage information that goes beyond what is included in the
 documentation in order to give a more elaborate overview of the API.
 
-This is not complete as of now. You can contribute to this section by [opening a pull request](https://github.com/flutter/packages/pulls).
+This is not complete as of now. You can contribute to this section by [opening a pull request](https://github.com/flutter/plugins/pulls).
 
 ### Playback speed
 

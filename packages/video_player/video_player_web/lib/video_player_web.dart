@@ -4,12 +4,12 @@
 
 import 'dart:async';
 import 'dart:html';
-import 'dart:ui_web' as ui_web;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
+import 'src/shims/dart_ui.dart' as ui;
 import 'src/video_player.dart';
 
 /// The web implementation of [VideoPlayerPlatform].
@@ -62,7 +62,7 @@ class VideoPlayerPlugin extends VideoPlayerPlatform {
         if (dataSource.package != null && dataSource.package!.isNotEmpty) {
           assetUrl = 'packages/${dataSource.package}/$assetUrl';
         }
-        assetUrl = ui_web.assetManager.getAssetUrl(assetUrl);
+        assetUrl = ui.webOnlyAssetManager.getAssetUrl(assetUrl);
         uri = assetUrl;
         break;
       case DataSourceType.file:
@@ -75,18 +75,17 @@ class VideoPlayerPlugin extends VideoPlayerPlatform {
 
     final VideoElement videoElement = VideoElement()
       ..id = 'videoElement-$textureId'
+      ..src = uri
       ..style.border = 'none'
       ..style.height = '100%'
       ..style.width = '100%';
 
     // TODO(hterkelsen): Use initialization parameters once they are available
-    ui_web.platformViewRegistry.registerViewFactory(
+    ui.platformViewRegistry.registerViewFactory(
         'videoPlayer-$textureId', (int viewId) => videoElement);
 
     final VideoPlayer player = VideoPlayer(videoElement: videoElement)
-      ..initialize(
-        src: uri,
-      );
+      ..initialize();
 
     _videoPlayers[textureId] = player;
 
@@ -131,11 +130,6 @@ class VideoPlayerPlugin extends VideoPlayerPlatform {
   @override
   Stream<VideoEvent> videoEventsFor(int textureId) {
     return _player(textureId).events;
-  }
-
-  @override
-  Future<void> setWebOptions(int textureId, VideoPlayerWebOptions options) {
-    return _player(textureId).setOptions(options);
   }
 
   // Retrieves a [VideoPlayer] by its internal `id`.
