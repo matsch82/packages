@@ -12,14 +12,16 @@ environment:
 flutter:
   plugin:
     platforms:
-      android:
-        default_package: video_player_android
-      ios:
-        default_package: video_player_avfoundation
-      macos:
-        default_package: video_player_avfoundation
-      web:
-        default_package: video_player_web
+      linux:
+        default_package: video_player
+#      android:
+#        default_package: video_player_android
+#      ios:
+#        default_package: video_player_avfoundation
+#      macos:
+#        default_package: video_player_avfoundation
+#      web:
+#        default_package: video_player_web
 
 dependencies:
   flutter:
