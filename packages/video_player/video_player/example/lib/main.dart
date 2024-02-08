@@ -149,7 +149,7 @@ class _ButterFlyAssetVideoState extends State<_ButterFlyAssetVideo> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.asset('assets/Butterfly-209.mp4');
+    _controller = VideoPlayerController.asset('assets/Butterfly-209.webm');
 
     _controller.addListener(() {
       setState(() {});
@@ -173,7 +173,7 @@ class _ButterFlyAssetVideoState extends State<_ButterFlyAssetVideo> {
           Container(
             padding: const EdgeInsets.only(top: 20.0),
           ),
-          const Text('With assets mp4'),
+          const Text('With assets webm'),
           Container(
             padding: const EdgeInsets.all(20),
             child: AspectRatio(
@@ -325,7 +325,7 @@ class _PlayerVideoAndPopPageState extends State<_PlayerVideoAndPopPage> {
     super.initState();
 
     _videoPlayerController =
-        VideoPlayerController.asset('assets/Butterfly-209.mp4');
+        VideoPlayerController.asset('assets/Butterfly-209.webm');
     _videoPlayerController.addListener(() {
       if (startedPlaying && !_videoPlayerController.value.isPlaying) {
         Navigator.pop(context);
