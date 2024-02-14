@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_svg: ^1.0.0
   video_player: ^2.4.7
     # When depending on this package from a real application you should use:
     #   video_player: ^x.y.z
@@ -36,9 +37,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/flutter-mark-square-64.png
-    - assets/Butterfly-209.mp4
-    - assets/Butterfly-209.webm
-    - assets/bumble_bee_captions.srt
-    - assets/bumble_bee_captions.vtt
-    - assets/Audio.mp3
+    - assets/output.ogv
+    - assets/cs_logo_2.svg

@@ -8,6 +8,7 @@
 /// video.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:video_player/video_player.dart';
 
 void main() {
@@ -22,117 +23,13 @@ class _App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 1,
       child: Scaffold(
-        key: const ValueKey<String>('home_page'),
-        appBar: AppBar(
-          title: const Text('Video player example'),
-          actions: <Widget>[
-            IconButton(
-              key: const ValueKey<String>('push_tab'),
-              icon: const Icon(Icons.navigation),
-              onPressed: () {
-                Navigator.push<_PlayerVideoAndPopPage>(
-                  context,
-                  MaterialPageRoute<_PlayerVideoAndPopPage>(
-                    builder: (BuildContext context) => _PlayerVideoAndPopPage(),
-                  ),
-                );
-              },
-            )
-          ],
-          bottom: const TabBar(
-            isScrollable: true,
-            tabs: <Widget>[
-              Tab(icon: Icon(Icons.insert_drive_file), text: 'Asset'),
-              Tab(icon: Icon(Icons.list), text: 'List example'),
-            ],
-          ),
-        ),
         body: TabBarView(
           children: <Widget>[
             _ButterFlyAssetVideo(),
-            _ButterFlyAssetVideoInList(),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ButterFlyAssetVideoInList extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: <Widget>[
-        const _ExampleCard(title: 'Item a'),
-        const _ExampleCard(title: 'Item b'),
-        const _ExampleCard(title: 'Item c'),
-        const _ExampleCard(title: 'Item d'),
-        const _ExampleCard(title: 'Item e'),
-        const _ExampleCard(title: 'Item f'),
-        const _ExampleCard(title: 'Item g'),
-        Card(
-            child: Column(children: <Widget>[
-          Column(
-            children: <Widget>[
-              const ListTile(
-                leading: Icon(Icons.cake),
-                title: Text('Video video'),
-              ),
-              Stack(
-                  alignment: FractionalOffset.bottomRight +
-                      const FractionalOffset(-0.1, -0.1),
-                  children: <Widget>[
-                    _ButterFlyAssetVideo(),
-                    Image.asset('assets/flutter-mark-square-64.png'),
-                  ]),
-            ],
-          ),
-        ])),
-        const _ExampleCard(title: 'Item h'),
-        const _ExampleCard(title: 'Item i'),
-        const _ExampleCard(title: 'Item j'),
-        const _ExampleCard(title: 'Item k'),
-        const _ExampleCard(title: 'Item l'),
-      ],
-    );
-  }
-}
-
-/// A filler card to show the video in a list of scrolling contents.
-class _ExampleCard extends StatelessWidget {
-  const _ExampleCard({Key? key, required this.title}) : super(key: key);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          ListTile(
-            leading: const Icon(Icons.airline_seat_flat_angled),
-            title: Text(title),
-          ),
-          ButtonBar(
-            children: <Widget>[
-              TextButton(
-                child: const Text('BUY TICKETS'),
-                onPressed: () {
-                  /* ... */
-                },
-              ),
-              TextButton(
-                child: const Text('SELL TICKETS'),
-                onPressed: () {
-                  /* ... */
-                },
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -149,7 +46,7 @@ class _ButterFlyAssetVideoState extends State<_ButterFlyAssetVideo> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.asset('assets/Butterfly-209.webm');
+    _controller = VideoPlayerController.asset('assets/output.ogv');
 
     _controller.addListener(() {
       setState(() {});
@@ -173,7 +70,6 @@ class _ButterFlyAssetVideoState extends State<_ButterFlyAssetVideo> {
           Container(
             padding: const EdgeInsets.only(top: 20.0),
           ),
-          const Text('With assets webm'),
           Container(
             padding: const EdgeInsets.all(20),
             child: AspectRatio(
@@ -278,7 +174,7 @@ class _ControlsOverlay extends StatelessWidget {
           ),
         ),
         Align(
-          alignment: Alignment.topRight,
+          alignment: Alignment.topCenter,
           child: PopupMenuButton<double>(
             initialValue: controller.value.playbackSpeed,
             tooltip: 'Playback speed',
@@ -306,6 +202,18 @@ class _ControlsOverlay extends StatelessWidget {
             ),
           ),
         ),
+        Align(
+            alignment: Alignment.center,
+            child: Opacity(
+              opacity: 0.5,
+              child: AnimatedRotation(
+                turns: 1,
+                curve: Curves.linear,
+                duration: const Duration(seconds: 4),
+                child: SvgPicture.asset("assets/cs_logo_2.svg",
+                    width: 400, height: 400),
+              ),
+            ))
       ],
     );
   }
@@ -325,7 +233,7 @@ class _PlayerVideoAndPopPageState extends State<_PlayerVideoAndPopPage> {
     super.initState();
 
     _videoPlayerController =
-        VideoPlayerController.asset('assets/Butterfly-209.webm');
+        VideoPlayerController.asset('assets/BigBuckBunny.mp4');
     _videoPlayerController.addListener(() {
       if (startedPlaying && !_videoPlayerController.value.isPlaying) {
         Navigator.pop(context);
