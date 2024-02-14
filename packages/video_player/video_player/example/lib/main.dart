@@ -22,15 +22,8 @@ void main() {
 class _App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 1,
-      child: Scaffold(
-        body: TabBarView(
-          children: <Widget>[
-            _ButterFlyAssetVideo(),
-          ],
-        ),
-      ),
+    return Scaffold(
+      body: _ButterFlyAssetVideo(),
     );
   }
 }
@@ -40,13 +33,15 @@ class _ButterFlyAssetVideo extends StatefulWidget {
   _ButterFlyAssetVideoState createState() => _ButterFlyAssetVideoState();
 }
 
-class _ButterFlyAssetVideoState extends State<_ButterFlyAssetVideo> {
+class _ButterFlyAssetVideoState extends State<_ButterFlyAssetVideo>
+    with SingleTickerProviderStateMixin {
   late VideoPlayerController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.asset('assets/output.ogv');
+
+    _controller = VideoPlayerController.asset('assets/BigBuckBunny.mp4');
 
     _controller.addListener(() {
       setState(() {});
@@ -122,6 +117,14 @@ class _ControlsOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: <Widget>[
+        Align(
+          alignment: Alignment.center,
+          child: Opacity(
+            opacity: 0.7,
+            child: SvgPicture.asset("assets/cs_logo_2.svg",
+                width: 400, height: 400),
+          ),
+        ),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 50),
           reverseDuration: const Duration(milliseconds: 200),
@@ -174,7 +177,7 @@ class _ControlsOverlay extends StatelessWidget {
           ),
         ),
         Align(
-          alignment: Alignment.topCenter,
+          alignment: Alignment.topRight,
           child: PopupMenuButton<double>(
             initialValue: controller.value.playbackSpeed,
             tooltip: 'Playback speed',
@@ -202,18 +205,6 @@ class _ControlsOverlay extends StatelessWidget {
             ),
           ),
         ),
-        Align(
-            alignment: Alignment.center,
-            child: Opacity(
-              opacity: 0.5,
-              child: AnimatedRotation(
-                turns: 1,
-                curve: Curves.linear,
-                duration: const Duration(seconds: 4),
-                child: SvgPicture.asset("assets/cs_logo_2.svg",
-                    width: 400, height: 400),
-              ),
-            ))
       ],
     );
   }
