@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 // #docregion FullAppExample
+import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
@@ -12,6 +14,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   _cameras = await availableCameras();
+  developer.log(jsonEncode(_cameras), name: 'my.app.mschaff');
   runApp(const CameraApp());
 }
 
