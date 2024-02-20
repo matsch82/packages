@@ -634,6 +634,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
   Future<void> onNewCameraSelected(CameraDescription cameraDescription) async {
     final CameraController? oldController = controller;
+
     if (oldController != null) {
       // `controller` needs to be set to null before getting disposed,
       // to avoid a race condition when we use the controller that is being
@@ -652,7 +653,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     );
 
     controller = cameraController;
-
+    stderr.writeln(cameraController.cameraId);
     // If the controller is updated then update the UI.
     cameraController.addListener(() {
       if (mounted) {
@@ -665,7 +666,10 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     });
 
     try {
+      stderr.writeln('mschaff: try cameraController.initialize');
       await cameraController.initialize();
+      stderr.writeln(cameraController.cameraId);
+      stderr.writeln('mschaff: try cameraController.initialize');
       await Future.wait(<Future<Object?>>[
         // The exposure mode is currently not supported on the web.
         ...!kIsWeb
@@ -1077,6 +1081,7 @@ Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
     _cameras = await availableCameras();
+    stderr.writeln('mschaff: availableCameras returned');
   } on CameraException catch (e) {
     _logError(e.code, e.description);
   }
