@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -14,15 +15,19 @@ import 'messages.g.dart';
 /// An eLinux implementation of [VideoPlayerPlatform] that uses the
 /// Pigeon-generated [VideoPlayerApi].
 class ELinuxVideoPlayer extends VideoPlayerPlatform {
+
   final ELinuxVideoPlayerApi _api = ELinuxVideoPlayerApi();
 
   /// Registers this class as the default instance of [PathProviderPlatform].
   static void registerWith() {
+    stderr.writeln("mschaff: elinux_video_player.dart: ELinuxVideoPlayer create");
     VideoPlayerPlatform.instance = ELinuxVideoPlayer();
+    stderr.writeln("mschaff: elinux_video_player.dart: ELinuxVideoPlayer created");
   }
 
   @override
   Future<void> init() {
+    stderr.writeln("mschaff: elinux_video_player.dart: ELinuxVideoPlayer api.init");
     return _api.initialize();
   }
 
