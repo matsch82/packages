@@ -18,11 +18,7 @@ dependencies:
     # the parent directory to use the current plugin's version.
 #    path: ../
   video_player_elinux:
-    git:
-      url: https://github.com/matsch82/flutter-elinux-plugins.git
-      path: packages/video_player
-      ref: petalinux
-    
+    path: elinux/video-player
 
 dev_dependencies:
   flutter_driver:

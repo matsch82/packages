@@ -19,3 +19,6 @@ flutter:
       elinux:
         pluginClass: VideoPlayerElinuxPlugin
         dartPluginClass: ELinuxVideoPlayer
+      linux:
+        pluginClass: VideoPlayerElinuxPlugin
+        dartPluginClass: ELinuxVideoPlayer
